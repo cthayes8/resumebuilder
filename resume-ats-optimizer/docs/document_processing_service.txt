@@ -1,0 +1,185 @@
+// src/services/document/index.ts
+
+import mammoth from 'mammoth';
+import pdfParse from 'pdf-parse';
+
+/**
+ * Service for processing and extracting text from different document types
+ */
+export class DocumentService {
+  /**
+   * Extract text from a document file
+   * 
+   * @param file File object
+   * @returns Extracted text
+   */
+  async extractTextFromFile(file: File): Promise<string> {
+    try {
+      const fileType = this.getFileExtension(file.name);
+      
+      switch (fileType) {
+        case 'pdf':
+          return this.extractTextFromPDF(file);
+        case 'docx':
+          return this.extractTextFromDOCX(file);
+        default:
+          throw new Error(`Unsupported file type: ${fileType}`);
+      }
+    } catch (error) {
+      console.error('Error extracting text from file:', error);
+      throw new Error(`Failed to extract text: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Extract text from a PDF file
+   * 
+   * @param file PDF file
+   * @returns Extracted text
+   */
+  private async extractTextFromPDF(file: File): Promise<string> {
+    try {
+      // Convert File to ArrayBuffer
+      const buffer = await file.arrayBuffer();
+      
+      // Parse PDF
+      const data = await pdfParse(new Uint8Array(buffer));
+      
+      return data.text;
+    } catch (error) {
+      console.error('Error extracting text from PDF:', error);
+      throw new Error(`Failed to extract text from PDF: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Extract text from a DOCX file
+   * 
+   * @param file DOCX file
+   * @returns Extracted text
+   */
+  private async extractTextFromDOCX(file: File): Promise<string> {
+    try {
+      // Convert File to ArrayBuffer
+      const buffer = await file.arrayBuffer();
+      
+      // Extract text from DOCX
+      const result = await mammoth.extractRawText({
+        arrayBuffer: buffer
+      });
+      
+      return result.value;
+    } catch (error) {
+      console.error('Error extracting text from DOCX:', error);
+      throw new Error(`Failed to extract text from DOCX: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Generate a PDF from resume data
+   * 
+   * @param resumeData Resume data
+   * @returns PDF file as Blob
+   */
+  async generatePDF(resumeData: any): Promise<Blob> {
+    try {
+      // This is a placeholder for PDF generation
+      // In a real implementation, you would use a library like jsPDF or pdfmake
+      // Or call a PDF generation API
+      
+      // Placeholder implementation
+      const pdfContent = `
+        Resume for ${resumeData.personalInfo.name}
+        
+        Contact Information:
+        Email: ${resumeData.personalInfo.email}
+        Phone: ${resumeData.personalInfo.phone || 'N/A'}
+        
+        Summary:
+        ${resumeData.summary || 'N/A'}
+        
+        Skills:
+        ${resumeData.skills.join(', ')}
+        
+        Experience:
+        ${resumeData.experience.map(exp => `
+          ${exp.title} at ${exp.company}
+          ${exp.startDate} - ${exp.endDate}
+          ${exp.description || ''}
+        `).join('\n')}
+        
+        Education:
+        ${resumeData.education.map(edu => `
+          ${edu.degree} at ${edu.institution}
+          ${edu.graduationDate}
+        `).join('\n')}
+      `;
+      
+      // Create a Blob for the PDF (in a real implementation, this would be a real PDF)
+      return new Blob([pdfContent], { type: 'application/pdf' });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      throw new Error(`Failed to generate PDF: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Generate a DOCX from resume data
+   * 
+   * @param resumeData Resume data
+   * @returns DOCX file as Blob
+   */
+  async generateDOCX(resumeData: any): Promise<Blob> {
+    try {
+      // This is a placeholder for DOCX generation
+      // In a real implementation, you would use a library like docx
+      // Or call a DOCX generation API
+      
+      // Placeholder implementation - same as PDF for now
+      const docxContent = `
+        Resume for ${resumeData.personalInfo.name}
+        
+        Contact Information:
+        Email: ${resumeData.personalInfo.email}
+        Phone: ${resumeData.personalInfo.phone || 'N/A'}
+        
+        Summary:
+        ${resumeData.summary || 'N/A'}
+        
+        Skills:
+        ${resumeData.skills.join(', ')}
+        
+        Experience:
+        ${resumeData.experience.map(exp => `
+          ${exp.title} at ${exp.company}
+          ${exp.startDate} - ${exp.endDate}
+          ${exp.description || ''}
+        `).join('\n')}
+        
+        Education:
+        ${resumeData.education.map(edu => `
+          ${edu.degree} at ${edu.institution}
+          ${edu.graduationDate}
+        `).join('\n')}
+      `;
+      
+      // Create a Blob for the DOCX (in a real implementation, this would be a real DOCX)
+      return new Blob([docxContent], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    } catch (error) {
+      console.error('Error generating DOCX:', error);
+      throw new Error(`Failed to generate DOCX: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Get file extension from filename
+   * 
+   * @param filename Filename
+   * @returns File extension
+   */
+  private getFileExtension(filename: string): string {
+    return filename.split('.').pop()?.toLowerCase() || '';
+  }
+}
+
+export default new DocumentService();

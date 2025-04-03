@@ -1,0 +1,413 @@
+// src/services/supabase/index.ts
+
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { 
+  User, 
+  OptimizationSession, 
+  ResumeData, 
+  JobDescriptionData, 
+  CompatibilityAnalysis, 
+  OptimizationSuggestions,
+  OptimizationReport
+} from '../../types';
+
+/**
+ * Service class for Supabase database operations
+ */
+export class SupabaseService {
+  private supabase: SupabaseClient;
+
+  constructor() {
+    this.supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    );
+  }
+
+  /**
+   * Store a parsed resume
+   * 
+   * @param userId User ID (optional)
+   * @param resumeData Parsed resume data
+   * @returns Upload ID
+   */
+  async storeResume(userId: string | undefined, resumeData: ResumeData): Promise<string> {
+    try {
+      const { data, error } = await this.supabase
+        .from('resumes')
+        .insert({
+          user_id: userId,
+          data: resumeData,
+          created_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      return data.id;
+    } catch (error) {
+      console.error('Error storing resume:', error);
+      throw new Error(`Failed to store resume: ${error.message}`);
+    }
+  }
+
+  /**
+   * Store a parsed job description
+   * 
+   * @param userId User ID (optional)
+   * @param jobData Parsed job description data
+   * @returns Upload ID
+   */
+  async storeJobDescription(userId: string | undefined, jobData: JobDescriptionData): Promise<string> {
+    try {
+      const { data, error } = await this.supabase
+        .from('job_descriptions')
+        .insert({
+          user_id: userId,
+          data: jobData,
+          created_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      return data.id;
+    } catch (error) {
+      console.error('Error storing job description:', error);
+      throw new Error(`Failed to store job description: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create a new optimization session
+   * 
+   * @param userId User ID (optional)
+   * @param resumeId Resume ID
+   * @param jobDescriptionId Job description ID
+   * @returns Session ID
+   */
+  async createOptimizationSession(
+    userId: string | undefined,
+    resumeId: string,
+    jobDescriptionId: string
+  ): Promise<string> {
+    try {
+      const { data, error } = await this.supabase
+        .from('optimization_sessions')
+        .insert({
+          user_id: userId,
+          resume_id: resumeId,
+          job_description_id: jobDescriptionId,
+          created_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      return data.id;
+    } catch (error) {
+      console.error('Error creating optimization session:', error);
+      throw new Error(`Failed to create optimization session: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get a stored resume by ID
+   * 
+   * @param resumeId Resume ID
+   * @returns Resume data
+   */
+  async getResume(resumeId: string): Promise<ResumeData> {
+    try {
+      const { data, error } = await this.supabase
+        .from('resumes')
+        .select('data')
+        .eq('id', resumeId)
+        .single();
+
+      if (error) throw error;
+      return data.data as ResumeData;
+    } catch (error) {
+      console.error('Error retrieving resume:', error);
+      throw new Error(`Failed to retrieve resume: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get a stored job description by ID
+   * 
+   * @param jobDescriptionId Job description ID
+   * @returns Job description data
+   */
+  async getJobDescription(jobDescriptionId: string): Promise<JobDescriptionData> {
+    try {
+      const { data, error } = await this.supabase
+        .from('job_descriptions')
+        .select('data')
+        .eq('id', jobDescriptionId)
+        .single();
+
+      if (error) throw error;
+      return data.data as JobDescriptionData;
+    } catch (error) {
+      console.error('Error retrieving job description:', error);
+      throw new Error(`Failed to retrieve job description: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update an optimization session with analysis results
+   * 
+   * @param sessionId Session ID
+   * @param analysisResults Analysis results
+   */
+  async saveAnalysisResults(sessionId: string, analysisResults: CompatibilityAnalysis): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('optimization_sessions')
+        .update({
+          analysis_results: analysisResults,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving analysis results:', error);
+      throw new Error(`Failed to save analysis results: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update an optimization session with optimization suggestions
+   * 
+   * @param sessionId Session ID
+   * @param suggestions Optimization suggestions
+   */
+  async saveOptimizationSuggestions(sessionId: string, suggestions: OptimizationSuggestions): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('optimization_sessions')
+        .update({
+          optimization_suggestions: suggestions,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving optimization suggestions:', error);
+      throw new Error(`Failed to save optimization suggestions: ${error.message}`);
+    }
+  }
+
+  /**
+   * Store an optimized resume
+   * 
+   * @param sessionId Session ID
+   * @param optimizedResumeData Optimized resume data
+   * @param report Optimization report
+   * @returns Optimized resume ID
+   */
+  async storeOptimizedResume(
+    sessionId: string,
+    optimizedResumeData: ResumeData,
+    report: OptimizationReport
+  ): Promise<string> {
+    try {
+      // First store the optimized resume
+      const { data: resumeData, error: resumeError } = await this.supabase
+        .from('optimized_resumes')
+        .insert({
+          session_id: sessionId,
+          data: optimizedResumeData,
+          created_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+
+      if (resumeError) throw resumeError;
+      
+      // Then update the session with the optimized resume ID and report
+      const { error: sessionError } = await this.supabase
+        .from('optimization_sessions')
+        .update({
+          optimized_resume_id: resumeData.id,
+          report: report,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', sessionId);
+
+      if (sessionError) throw sessionError;
+      
+      return resumeData.id;
+    } catch (error) {
+      console.error('Error storing optimized resume:', error);
+      throw new Error(`Failed to store optimized resume: ${error.message}`);
+    }
+  }
+
+  /**
+   * Upload a resume file to storage
+   * 
+   * @param userId User ID (optional)
+   * @param file File to upload
+   * @returns File path
+   */
+  async uploadResumeFile(userId: string | undefined, file: File): Promise<string> {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = userId 
+        ? `resumes/${userId}/${fileName}`
+        : `resumes/anonymous/${fileName}`;
+      
+      const { error } = await this.supabase
+        .storage
+        .from('resume-files')
+        .upload(filePath, file);
+
+      if (error) throw error;
+      
+      return filePath;
+    } catch (error) {
+      console.error('Error uploading resume file:', error);
+      throw new Error(`Failed to upload resume file: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get a download URL for a stored file
+   * 
+   * @param filePath Path to the file
+   * @returns Download URL
+   */
+  async getFileDownloadUrl(filePath: string): Promise<string> {
+    try {
+      const { data, error } = await this.supabase
+        .storage
+        .from('resume-files')
+        .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
+
+      if (error) throw error;
+      return data.signedUrl;
+    } catch (error) {
+      console.error('Error generating download URL:', error);
+      throw new Error(`Failed to generate download URL: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get a user's optimization sessions
+   * 
+   * @param userId User ID
+   * @returns List of sessions
+   */
+  async getUserSessions(userId: string): Promise<OptimizationSession[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('optimization_sessions')
+        .select(`
+          id,
+          created_at,
+          completed_at,
+          resume_id,
+          job_description_id,
+          optimized_resume_id
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      return data.map(session => ({
+        id: session.id,
+        userId,
+        resumeUploadId: session.resume_id,
+        jobDescriptionId: session.job_description_id,
+        createdAt: new Date(session.created_at),
+        completedAt: session.completed_at ? new Date(session.completed_at) : undefined,
+        optimizedResumeId: session.optimized_resume_id,
+      }));
+    } catch (error) {
+      console.error('Error retrieving user sessions:', error);
+      throw new Error(`Failed to retrieve user sessions: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get a specific optimization session
+   * 
+   * @param sessionId Session ID
+   * @returns Session details
+   */
+  async getSession(sessionId: string): Promise<OptimizationSession> {
+    try {
+      const { data, error } = await this.supabase
+        .from('optimization_sessions')
+        .select(`
+          id,
+          user_id,
+          created_at,
+          completed_at,
+          resume_id,
+          job_description_id,
+          analysis_results,
+          optimization_suggestions,
+          optimized_resume_id,
+          report
+        `)
+        .eq('id', sessionId)
+        .single();
+
+      if (error) throw error;
+      
+      return {
+        id: data.id,
+        userId: data.user_id,
+        resumeUploadId: data.resume_id,
+        jobDescriptionId: data.job_description_id,
+        createdAt: new Date(data.created_at),
+        completedAt: data.completed_at ? new Date(data.completed_at) : undefined,
+        analysisResults: data.analysis_results,
+        optimizationSuggestions: data.optimization_suggestions,
+        optimizedResumeId: data.optimized_resume_id,
+        report: data.report,
+      };
+    } catch (error) {
+      console.error('Error retrieving session:', error);
+      throw new Error(`Failed to retrieve session: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update a user's record after payment
+   * 
+   * @param userId User ID
+   * @param productType Product type
+   * @param expiryDate Expiry date for subscription
+   */
+  async updateUserAfterPayment(
+    userId: string,
+    productType: 'one-time' | 'subscription',
+    expiryDate?: Date
+  ): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('users')
+        .update({
+          subscription_type: productType,
+          subscription_expires_at: expiryDate?.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating user after payment:', error);
+      throw new Error(`Failed to update user after payment: ${error.message}`);
+    }
+  }
+}
+
+export default new SupabaseService();

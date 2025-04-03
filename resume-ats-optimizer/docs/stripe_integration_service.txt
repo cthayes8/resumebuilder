@@ -1,0 +1,160 @@
+// src/services/stripe/index.ts
+
+import Stripe from 'stripe';
+import { CreateCheckoutSessionRequest, CreateCheckoutSessionResponse } from '../../types';
+
+// Initialize Stripe client
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2023-10-16', // Update with the latest version
+});
+
+/**
+ * Service class for Stripe payment processing
+ */
+export class StripeService {
+  /**
+   * Product IDs for one-time and subscription products
+   * Configure these in the Stripe dashboard and reference them here
+   */
+  private readonly PRODUCT_IDS = {
+    ONE_TIME: process.env.STRIPE_ONE_TIME_PRICE_ID || 'price_xxxxxxxxxxxxxx',
+    SUBSCRIPTION: process.env.STRIPE_SUBSCRIPTION_PRICE_ID || 'price_xxxxxxxxxxxxxx',
+  };
+
+  /**
+   * Create a Stripe checkout session
+   * 
+   * @param params Checkout session parameters
+   * @returns Checkout session details
+   */
+  async createCheckoutSession(
+    params: CreateCheckoutSessionRequest
+  ): Promise<CreateCheckoutSessionResponse> {
+    try {
+      // Determine which price ID to use based on product type
+      const priceId = params.productType === 'one-time' 
+        ? this.PRODUCT_IDS.ONE_TIME 
+        : this.PRODUCT_IDS.SUBSCRIPTION;
+
+      // Create Stripe checkout session
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: params.productType === 'one-time' ? 'payment' : 'subscription',
+        success_url: params.successUrl,
+        cancel_url: params.cancelUrl,
+        metadata: {
+          productType: params.productType,
+          // Add any additional metadata you want to store
+        }
+      });
+
+      return {
+        sessionId: session.id,
+        checkoutUrl: session.url || '',
+      };
+    } catch (error) {
+      console.error('Error creating Stripe checkout session:', error);
+      throw new Error(`Failed to create checkout session: ${error.message}`);
+    }
+  }
+
+  /**
+   * Verify a Stripe webhook event
+   * 
+   * @param payload The raw request body from Stripe
+   * @param signature The Stripe signature header
+   * @returns Verified Stripe event
+   */
+  verifyWebhookEvent(payload: string, signature: string): Stripe.Event {
+    try {
+      return stripe.webhooks.constructEvent(
+        payload,
+        signature,
+        process.env.STRIPE_WEBHOOK_SECRET || ''
+      );
+    } catch (error) {
+      console.error('Error verifying webhook:', error);
+      throw new Error(`Webhook verification failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Handle a successful payment
+   * 
+   * @param event Stripe event object
+   * @returns User ID and product type
+   */
+  async handleSuccessfulPayment(event: Stripe.Event): Promise<{ 
+    userId: string; 
+    productType: 'one-time' | 'subscription';
+  }> {
+    try {
+      const session = event.data.object as Stripe.Checkout.Session;
+      
+      // Extract metadata from the session
+      const productType = session.metadata?.productType as 'one-time' | 'subscription';
+      const userId = session.client_reference_id || '';
+
+      // You would typically update your user record in the database here
+      // to indicate they have purchased the product
+
+      return {
+        userId,
+        productType,
+      };
+    } catch (error) {
+      console.error('Error handling successful payment:', error);
+      throw new Error(`Failed to process payment event: ${error.message}`);
+    }
+  }
+
+  /**
+   * Retrieve the customer's subscription status
+   * 
+   * @param customerId Stripe customer ID
+   * @returns Subscription details
+   */
+  async getSubscriptionStatus(customerId: string): Promise<{
+    isActive: boolean;
+    expiresAt?: Date;
+    productType: 'one-time' | 'subscription' | 'none';
+  }> {
+    try {
+      // Get customer's subscriptions
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customerId,
+        status: 'active',
+        limit: 1,
+      });
+
+      // Check if customer has an active subscription
+      if (subscriptions.data.length > 0) {
+        const subscription = subscriptions.data[0];
+        return {
+          isActive: true,
+          expiresAt: new Date(subscription.current_period_end * 1000),
+          productType: 'subscription',
+        };
+      }
+
+      // Check if customer has made a one-time purchase
+      // This would typically be stored in your database
+      // This is just a placeholder implementation
+      return {
+        isActive: false,
+        productType: 'none',
+      };
+    } catch (error) {
+      console.error('Error retrieving subscription status:', error);
+      throw new Error(`Failed to get subscription status: ${error.message}`);
+    }
+  }
+}
+
+export default new StripeService();

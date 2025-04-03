@@ -1,0 +1,265 @@
+# Project Setup and Configuration
+
+This document outlines the initial project setup and configuration for the Resume ATS Optimizer. Follow these steps to set up the project environment and dependencies.
+
+## Project Initialization
+
+Start by creating a new Next.js project with the App Router:
+
+```bash
+npx create-next-app resume-ats-optimizer
+cd resume-ats-optimizer
+```
+
+When prompted, select the following options:
+- Would you like to use TypeScript? **Yes**
+- Would you like to use ESLint? **Yes**
+- Would you like to use Tailwind CSS? **Yes**
+- Would you like to use the src/ directory? **Yes**
+- Would you like to use App Router? **Yes**
+- Would you like to customize the default import alias? **No**
+
+## Install Dependencies
+
+Install the required dependencies:
+
+```bash
+npm install @supabase/supabase-js @supabase/auth-helpers-nextjs stripe openai pdf-parse mammoth.js @21stdev/mcp
+npm install -D @types/pdf-parse
+```
+
+## Environment Variables
+
+Create a `.env.local` file in the project root with the following variables:
+
+```
+# API Keys
+OPENAI_API_KEY=your_openai_api_key
+STRIPE_SECRET_KEY=your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# Stripe Configuration
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+STRIPE_ONE_TIME_PRICE_ID=your_stripe_one_time_price_id
+STRIPE_SUBSCRIPTION_PRICE_ID=your_stripe_subscription_price_id
+
+# Application Configuration
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+## Configure Next.js
+
+Update `next.config.js` to include the necessary configurations:
+
+```javascript
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  images: {
+    domains: ['localhost'],
+  },
+  experimental: {
+    serverActions: true,
+  },
+  webpack: (config) => {
+    // Resolve node module usage in the browser
+    config.resolve.fallback = {
+      fs: false,
+      path: false,
+    };
+    return config;
+  },
+};
+
+module.exports = nextConfig;
+```
+
+## Supabase Setup
+
+1. Create a new project in Supabase
+2. Set up authentication with email/password provider
+3. Create the database tables using the schema in `supabase-schema.md`
+4. Create storage bucket for resume files
+5. Configure RLS policies as specified in the schema
+
+## Stripe Setup
+
+1. Create a Stripe account if you don't have one
+2. Set up two products in Stripe:
+   - One-time purchase ($19.99)
+   - Subscription ($9.99/month)
+3. Get the price IDs for both products and add them to your `.env.local` file
+4. Set up a webhook endpoint in Stripe pointing to your local development environment (use tools like ngrok for testing)
+
+## Project Structure
+
+Organize your project with the following structure:
+
+```
+src/
+├── app/                    # App Router pages
+│   ├── page.tsx            # Landing page
+│   ├── upload/page.tsx     # Upload page
+│   ├── analyze/page.tsx    # Analysis page
+│   ├── optimize/page.tsx   # Optimization page
+│   ├── download/page.tsx   # Download page
+│   └── api/                # API routes
+├── components/             # React components
+│   ├── ui/                 # Base UI components
+│   ├── forms/              # Form components
+│   ├── analysis/           # Analysis-related components
+│   └── optimization/       # Optimization-related components
+├── lib/                    # Utility functions
+│   ├── ai/                 # AI processing utilities
+│   ├── document/           # Document processing utilities
+│   └── helpers/            # General helper functions
+├── services/               # External service integrations
+│   ├── openai/             # OpenAI API integration
+│   ├── stripe/             # Stripe payment integration
+│   ├── supabase/           # Supabase integration
+│   └── document/           # Document processing service
+├── types/                  # TypeScript type definitions
+└── middleware.ts           # Next.js middleware for auth
+```
+
+## Set Up Supabase Auth
+
+Create a middleware file to handle authentication:
+
+```typescript
+// src/middleware.ts
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
+  
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  // Handle authenticated routes
+  if (req.nextUrl.pathname.startsWith('/dashboard') && !session) {
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = '/login';
+    redirectUrl.searchParams.set('redirectedFrom', req.nextUrl.pathname);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  return res;
+}
+
+export const config = {
+  matcher: [
+    '/dashboard/:path*',
+    '/api/payment/:path*',
+  ],
+};
+```
+
+## Configure MCP Theme
+
+Add a theme configuration file to integrate with 21st Dev MCP:
+
+```typescript
+// src/lib/theme.ts
+import { createTheme } from '@21stdev/mcp';
+
+export const theme = createTheme({
+  colors: {
+    primary: '#2563EB',
+    secondary: '#16A34A',
+    accent: '#EC4899',
+    success: '#22C55E',
+    warning: '#F59E0B',
+    error: '#EF4444',
+    info: '#3B82F6',
+    neutral: '#6B7280',
+    background: '#F9FAFB',
+  },
+  typography: {
+    fontFamily: 'Inter, sans-serif',
+  },
+});
+```
+
+Apply the theme in your root layout:
+
+```tsx
+// src/app/layout.tsx
+import { ThemeProvider } from '@21stdev/mcp';
+import { theme } from '@/lib/theme';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <ThemeProvider theme={theme}>
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+## Development Workflow
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Your application will be available at [http://localhost:3000](http://localhost:3000).
+
+## Testing Stripe Integration
+
+For testing Stripe webhooks locally:
+
+1. Install the Stripe CLI
+2. Run `stripe login` to authenticate
+3. Start forwarding webhook events:
+   ```bash
+   stripe listen --forward-to localhost:3000/api/payment/webhook
+   ```
+4. Use test credit card numbers from Stripe's documentation for testing payments
+
+## Building for Production
+
+Prepare your application for production:
+
+```bash
+npm run build
+```
+
+This command will generate an optimized production build in the `.next` directory.
+
+## Deployment Considerations
+
+When deploying to production:
+
+1. Set up proper environment variables in your hosting platform
+2. Configure Stripe webhooks to point to your production URL
+3. Ensure Supabase RLS policies are properly configured
+4. Set up proper CORS configurations
+5. Configure rate limiting and security headers
+
+## Monitoring and Error Handling
+
+Consider adding the following tools for monitoring and error handling:
+
+1. Sentry for error tracking
+2. Logging service for server-side logs
+3. Analytics integration for user behavior tracking

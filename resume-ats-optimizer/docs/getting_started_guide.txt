@@ -1,0 +1,170 @@
+# Resume ATS Optimizer - Getting Started Guide
+
+This guide will help you set up and run the Resume ATS Optimizer project. Follow these steps to get your development environment running.
+
+## Prerequisites
+
+- Node.js (v18.0.0 or later)
+- npm or yarn
+- OpenAI API key
+- Stripe account (for payment processing)
+
+## Environment Setup
+
+1. Clone the project repository
+2. Create a `.env.local` file in the project root with the following variables:
+
+```
+# API Keys
+OPENAI_API_KEY=your_openai_api_key
+STRIPE_SECRET_KEY=your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+
+# Configuration
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+
+# Optional: Analytics
+NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=your_ga_id
+```
+
+## Project Structure
+
+The project follows a standard Next.js App Router structure:
+
+```
+src/
+├── app/                    # App Router pages
+│   ├── page.tsx            # Landing page
+│   ├── upload/page.tsx     # Upload page
+│   ├── analyze/page.tsx    # Analysis page
+│   ├── optimize/page.tsx   # Optimization page
+│   ├── download/page.tsx   # Download page
+│   └── api/                # API routes
+├── components/             # React components
+├── lib/                    # Utility functions
+├── services/               # External service integrations
+└── types/                  # TypeScript type definitions
+```
+
+## Development Workflow
+
+1. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+2. Run the development server:
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+3. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+
+## API Integration Steps
+
+### 1. OpenAI Setup
+
+1. Add your OpenAI API key to the `.env.local` file
+2. Review the prompts in `src/services/openai/prompts.ts`
+3. Test AI functionality with small samples first
+
+### 2. Stripe Integration
+
+1. Create products in Stripe dashboard:
+   - One-time purchase product ($19.99)
+   - Subscription product ($9.99/month)
+2. Add Stripe keys to the `.env.local` file
+3. Test payment flow in development mode
+
+## Implementation Strategy
+
+Follow this implementation order for a smooth development process:
+
+1. **Core Pages & Navigation**
+   - Implement basic layout and navigation
+   - Create placeholder components
+
+2. **Document Processing**
+   - Implement file upload component
+   - Create resume parsing service
+   - Build job description analysis
+
+3. **Analysis Engine**
+   - Implement compatibility analysis
+   - Build visualization components
+   - Add scoring system
+
+4. **Optimization Tools**
+   - Create suggestion component
+   - Implement acceptance/rejection mechanism
+   - Build document generator
+
+5. **Payment Integration**
+   - Implement Stripe checkout
+   - Add subscription handling
+   - Set up webhook listener
+
+## Testing
+
+### Manual Testing Checklist
+
+- [ ] File upload accepts PDF and DOCX
+- [ ] Resume parsing correctly extracts information
+- [ ] Job description analysis identifies key requirements
+- [ ] Compatibility analysis provides meaningful scores
+- [ ] Optimization suggestions are relevant
+- [ ] Document generation creates well-formatted output
+- [ ] Payment processing works correctly
+- [ ] Responsive design functions on mobile devices
+
+### Automated Testing
+
+Run the test suite:
+```bash
+npm run test
+# or
+yarn test
+```
+
+## Deployment
+
+1. Configure a production environment on Vercel or similar
+2. Set up environment variables in the deployment platform
+3. Deploy the application:
+   ```bash
+   npm run build
+   # or
+   yarn build
+   ```
+
+## Common Issues and Solutions
+
+### OpenAI API Issues
+
+- **Rate Limiting**: Implement retry logic with exponential backoff
+- **Token Limits**: Break large documents into chunks
+- **Parsing Errors**: Add validation and fallback logic
+
+### File Processing Issues
+
+- **Large Files**: Implement file size checks
+- **Unsupported Formats**: Add clear error messages
+- **Parsing Failures**: Provide manual input option as fallback
+
+### Payment Processing Issues
+
+- **Webhook Failures**: Check Stripe dashboard events
+- **Test Mode vs Live Mode**: Ensure correct API keys for environment
+- **Payment Confirmation**: Implement proper success/failure handling
+
+## Resources
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [OpenAI API Documentation](https://platform.openai.com/docs/api-reference)
+- [Stripe API Documentation](https://stripe.com/docs/api)
+- [React Documentation](https://reactjs.org/docs/getting-started.html)

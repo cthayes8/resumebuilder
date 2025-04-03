@@ -1,0 +1,285 @@
+// src/services/openai/index.ts
+
+import OpenAI from 'openai';
+import { 
+  ResumeData, 
+  JobDescriptionData, 
+  CompatibilityAnalysis, 
+  OptimizationSuggestions 
+} from '../../types';
+
+// Import prompts from separate files
+import { 
+  RESUME_PARSER_PROMPT, 
+  JOB_DESCRIPTION_ANALYZER_PROMPT,
+  COMPATIBILITY_ANALYSIS_PROMPT,
+  CONTENT_OPTIMIZATION_PROMPT
+} from './prompts';
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+/**
+ * Service class for OpenAI API interactions
+ */
+export class OpenAIService {
+  
+  /**
+   * Parse resume text into structured data
+   * @param resumeText Raw text from resume
+   * @returns Parsed resume data
+   */
+  async parseResume(resumeText: string): Promise<ResumeData> {
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo-16k",
+        messages: [
+          { 
+            role: "system", 
+            content: RESUME_PARSER_PROMPT
+          },
+          { role: "user", content: resumeText }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+      });
+      
+      const parsedData = JSON.parse(response.choices[0].message.content);
+      return this.validateResumeData(parsedData);
+    } catch (error) {
+      console.error("Error parsing resume:", error);
+      throw new Error("Failed to parse resume: " + error.message);
+    }
+  }
+  
+  /**
+   * Validate and clean resume data
+   */
+  private validateResumeData(data: any): ResumeData {
+    // Ensure required fields exist
+    if (!data.personalInfo) data.personalInfo = { name: "", email: "" };
+    if (!data.skills) data.skills = [];
+    if (!data.experience) data.experience = [];
+    if (!data.education) data.education = [];
+    
+    return data as ResumeData;
+  }
+  
+  /**
+   * Analyze job description text into structured data
+   * @param jobText Raw text from job description
+   * @returns Parsed job description data
+   */
+  async analyzeJobDescription(jobText: string): Promise<JobDescriptionData> {
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo-16k",
+        messages: [
+          { 
+            role: "system", 
+            content: JOB_DESCRIPTION_ANALYZER_PROMPT
+          },
+          { role: "user", content: jobText }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+      });
+      
+      const parsedData = JSON.parse(response.choices[0].message.content);
+      return this.validateJobData(parsedData);
+    } catch (error) {
+      console.error("Error analyzing job description:", error);
+      throw new Error("Failed to analyze job description: " + error.message);
+    }
+  }
+  
+  /**
+   * Validate and clean job description data
+   */
+  private validateJobData(data: any): JobDescriptionData {
+    // Ensure required fields exist
+    if (!data.jobTitle) data.jobTitle = "Untitled Position";
+    if (!data.requiredSkills) data.requiredSkills = [];
+    if (!data.requiredExperience) data.requiredExperience = { specificExperiences: [] };
+    if (!data.responsibilities) data.responsibilities = [];
+    if (!data.keyPhrases) data.keyPhrases = [];
+    
+    return data as JobDescriptionData;
+  }
+  
+  /**
+   * Analyze compatibility between resume and job description
+   * @param resumeData Parsed resume data
+   * @param jobData Parsed job description data
+   * @returns Compatibility analysis results
+   */
+  async analyzeCompatibility(
+    resumeData: ResumeData, 
+    jobData: JobDescriptionData
+  ): Promise<CompatibilityAnalysis> {
+    try {
+      // Create a comparison data object
+      const comparisonData = {
+        resume: resumeData,
+        jobDescription: jobData
+      };
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4", // Use GPT-4 for better analysis
+        messages: [
+          { 
+            role: "system", 
+            content: COMPATIBILITY_ANALYSIS_PROMPT
+          },
+          { 
+            role: "user", 
+            content: JSON.stringify(comparisonData)
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.3,
+      });
+      
+      const analysisResults = JSON.parse(response.choices[0].message.content);
+      return this.validateCompatibilityResults(analysisResults);
+    } catch (error) {
+      console.error("Error analyzing compatibility:", error);
+      throw new Error("Failed to analyze compatibility: " + error.message);
+    }
+  }
+  
+  /**
+   * Validate compatibility analysis results
+   */
+  private validateCompatibilityResults(results: any): CompatibilityAnalysis {
+    // Ensure required fields exist
+    if (typeof results.overallCompatibilityScore !== 'number') {
+      results.overallCompatibilityScore = 50; // Default to 50%
+    }
+    
+    // Ensure score is between 0-100
+    results.overallCompatibilityScore = Math.max(0, Math.min(100, results.overallCompatibilityScore));
+    
+    // Ensure other required objects exist
+    if (!results.keywordMatches) results.keywordMatches = { matched: [], missing: [] };
+    if (!results.experienceAlignment) {
+      results.experienceAlignment = { 
+        score: 50, 
+        matchedResponsibilities: [], 
+        unmatchedResponsibilities: [],
+        improvementSuggestions: []
+      };
+    }
+    if (!results.educationAlignment) {
+      results.educationAlignment = { 
+        score: 50, 
+        matches: [], 
+        gaps: [],
+        suggestions: []
+      };
+    }
+    if (!results.formattingAnalysis) results.formattingAnalysis = { issues: [] };
+    if (!results.sectionSuggestions) results.sectionSuggestions = {};
+    
+    return results as CompatibilityAnalysis;
+  }
+  
+  /**
+   * Generate optimization suggestions based on compatibility analysis
+   * @param resumeData Original resume data
+   * @param analysisResults Compatibility analysis results
+   * @returns Optimization suggestions
+   */
+  async generateOptimizationSuggestions(
+    resumeData: ResumeData,
+    analysisResults: CompatibilityAnalysis
+  ): Promise<OptimizationSuggestions> {
+    try {
+      const inputData = {
+        resume: resumeData,
+        analysis: analysisResults
+      };
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4", // Use GPT-4 for better suggestions
+        messages: [
+          { 
+            role: "system", 
+            content: CONTENT_OPTIMIZATION_PROMPT
+          },
+          { 
+            role: "user", 
+            content: JSON.stringify(inputData)
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.4, // Slightly higher for more creative suggestions
+      });
+      
+      const suggestions = JSON.parse(response.choices[0].message.content);
+      return this.validateOptimizationSuggestions(suggestions);
+    } catch (error) {
+      console.error("Error generating optimization suggestions:", error);
+      throw new Error("Failed to generate optimization suggestions: " + error.message);
+    }
+  }
+  
+  /**
+   * Validate optimization suggestions
+   */
+  private validateOptimizationSuggestions(suggestions: any): OptimizationSuggestions {
+    // Ensure required fields exist
+    if (!suggestions.experience) suggestions.experience = [];
+    if (!suggestions.skills) {
+      suggestions.skills = {
+        original: [],
+        improved: [],
+        explanation: "No skill improvements suggested."
+      };
+    }
+    if (!suggestions.education) {
+      suggestions.education = {
+        needsChanges: false,
+        suggestions: null
+      };
+    }
+    if (!suggestions.formattingImprovements) suggestions.formattingImprovements = [];
+    
+    return suggestions as OptimizationSuggestions;
+  }
+  
+  /**
+   * Error handling wrapper for AI calls
+   * @param apiCall The API call function to execute
+   * @param fallback Optional fallback value if call fails
+   * @returns The API call result or fallback
+   */
+  async withErrorHandling<T>(apiCall: () => Promise<T>, fallback?: T): Promise<T> {
+    try {
+      return await apiCall();
+    } catch (error) {
+      console.error("OpenAI API error:", error);
+      
+      // Check for specific error types
+      if (error.response?.status === 429) {
+        throw new Error("Rate limit exceeded. Please try again in a moment.");
+      }
+      
+      if (error.response?.status === 400) {
+        throw new Error("Invalid request. Please check your inputs and try again.");
+      }
+      
+      // Return fallback if provided
+      if (fallback !== undefined) {
+        console.warn("Using fallback value due to API error");
+        return fallback;
+      }
+      
+      throw error;
+    }
+  }
+}
+
+export default new OpenAIService();

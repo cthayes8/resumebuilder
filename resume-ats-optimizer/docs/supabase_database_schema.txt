@@ -1,0 +1,307 @@
+# Supabase Database Schema
+
+This document outlines the database schema for the Resume ATS Optimizer application in Supabase. Use this as a reference when setting up your database tables and relationships.
+
+## Tables Structure
+
+### users
+
+Stores user information and subscription status.
+
+```sql
+CREATE TABLE public.users (
+  id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  subscription_type TEXT CHECK (subscription_type IN ('free', 'one-time', 'subscription')),
+  subscription_expires_at TIMESTAMP WITH TIME ZONE,
+  stripe_customer_id TEXT
+);
+
+-- Set up Row Level Security (RLS)
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can view own data" ON public.users
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Users can update own data" ON public.users
+  FOR UPDATE USING (auth.uid() = id);
+```
+
+### resumes
+
+Stores parsed resume data.
+
+```sql
+CREATE TABLE public.resumes (
+  id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES public.users,
+  file_path TEXT,
+  data JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  format_issues JSONB
+);
+
+-- Set up Row Level Security (RLS)
+ALTER TABLE public.resumes ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can view own resumes" ON public.resumes
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own resumes" ON public.resumes
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Anonymous can insert resumes" ON public.resumes
+  FOR INSERT WITH CHECK (user_id IS NULL);
+
+CREATE POLICY "Anonymous can view resumes they created" ON public.resumes
+  FOR SELECT USING (EXISTS (
+    SELECT 1 FROM public.optimization_sessions
+    WHERE public.optimization_sessions.resume_id = id
+    AND public.optimization_sessions.session_token = current_setting('app.session_token', true)
+  ));
+```
+
+### job_descriptions
+
+Stores parsed job description data.
+
+```sql
+CREATE TABLE public.job_descriptions (
+  id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES public.users,
+  data JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Set up Row Level Security (RLS)
+ALTER TABLE public.job_descriptions ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can view own job descriptions" ON public.job_descriptions
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own job descriptions" ON public.job_descriptions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Anonymous can insert job descriptions" ON public.job_descriptions
+  FOR INSERT WITH CHECK (user_id IS NULL);
+
+CREATE POLICY "Anonymous can view job descriptions they created" ON public.job_descriptions
+  FOR SELECT USING (EXISTS (
+    SELECT 1 FROM public.optimization_sessions
+    WHERE public.optimization_sessions.job_description_id = id
+    AND public.optimization_sessions.session_token = current_setting('app.session_token', true)
+  ));
+```
+
+### optimization_sessions
+
+Tracks the full optimization workflow from upload to download.
+
+```sql
+CREATE TABLE public.optimization_sessions (
+  id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES public.users,
+  session_token TEXT,
+  resume_id UUID REFERENCES public.resumes NOT NULL,
+  job_description_id UUID REFERENCES public.job_descriptions NOT NULL,
+  analysis_results JSONB,
+  optimization_suggestions JSONB,
+  optimized_resume_id UUID,
+  report JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  completed_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Set up Row Level Security (RLS)
+ALTER TABLE public.optimization_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can view own optimization sessions" ON public.optimization_sessions
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own optimization sessions" ON public.optimization_sessions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own optimization sessions" ON public.optimization_sessions
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Anonymous can insert optimization sessions" ON public.optimization_sessions
+  FOR INSERT WITH CHECK (user_id IS NULL);
+
+CREATE POLICY "Anonymous can update optimization sessions they created" ON public.optimization_sessions
+  FOR UPDATE USING (session_token = current_setting('app.session_token', true));
+
+CREATE POLICY "Anonymous can view optimization sessions they created" ON public.optimization_sessions
+  FOR SELECT USING (session_token = current_setting('app.session_token', true));
+```
+
+### optimized_resumes
+
+Stores generated optimized resume data.
+
+```sql
+CREATE TABLE public.optimized_resumes (
+  id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  session_id UUID REFERENCES public.optimization_sessions NOT NULL,
+  data JSONB NOT NULL,
+  file_path TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Set up Row Level Security (RLS)
+ALTER TABLE public.optimized_resumes ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can view own optimized resumes" ON public.optimized_resumes
+  FOR SELECT USING (EXISTS (
+    SELECT 1 FROM public.optimization_sessions
+    WHERE public.optimization_sessions.id = session_id
+    AND public.optimization_sessions.user_id = auth.uid()
+  ));
+
+CREATE POLICY "Anonymous can view optimized resumes they created" ON public.optimized_resumes
+  FOR SELECT USING (EXISTS (
+    SELECT 1 FROM public.optimization_sessions
+    WHERE public.optimization_sessions.id = session_id
+    AND public.optimization_sessions.session_token = current_setting('app.session_token', true)
+  ));
+```
+
+## Storage Buckets
+
+### resume-files
+
+Stores uploaded resume files and generated PDF/DOCX files.
+
+```sql
+-- Create the storage bucket
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('resume-files', 'Resume Files', false);
+
+-- Set up policies for the bucket
+CREATE POLICY "Users can upload own resume files" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'resume-files' AND
+    (
+      (auth.uid() IS NOT NULL AND path LIKE 'resumes/' || auth.uid() || '/%') OR
+      (auth.uid() IS NULL AND path LIKE 'resumes/anonymous/%')
+    )
+  );
+
+CREATE POLICY "Users can view own resume files" ON storage.objects
+  FOR SELECT USING (
+    bucket_id = 'resume-files' AND
+    (
+      (auth.uid() IS NOT NULL AND path LIKE 'resumes/' || auth.uid() || '/%') OR
+      EXISTS (
+        SELECT 1 FROM public.optimization_sessions
+        JOIN public.resumes ON public.optimization_sessions.resume_id = public.resumes.id
+        WHERE public.resumes.file_path = storage.objects.name
+        AND (
+          public.optimization_sessions.user_id = auth.uid() OR
+          public.optimization_sessions.session_token = current_setting('app.session_token', true)
+        )
+      )
+    )
+  );
+```
+
+## Indexes
+
+Create indexes for performance optimization:
+
+```sql
+-- Indexes for faster lookups
+CREATE INDEX idx_resumes_user_id ON public.resumes(user_id);
+CREATE INDEX idx_job_descriptions_user_id ON public.job_descriptions(user_id);
+CREATE INDEX idx_optimization_sessions_user_id ON public.optimization_sessions(user_id);
+CREATE INDEX idx_optimization_sessions_resume_id ON public.optimization_sessions(resume_id);
+CREATE INDEX idx_optimization_sessions_job_description_id ON public.optimization_sessions(job_description_id);
+CREATE INDEX idx_optimization_sessions_session_token ON public.optimization_sessions(session_token);
+CREATE INDEX idx_optimized_resumes_session_id ON public.optimized_resumes(session_id);
+```
+
+## Functions
+
+Create helper functions for common operations:
+
+```sql
+-- Function to handle anonymous session tokens
+CREATE OR REPLACE FUNCTION public.set_session_token()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.user_id IS NULL AND NEW.session_token IS NULL THEN
+    NEW.session_token = gen_random_uuid()::text;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to automatically generate session tokens for anonymous users
+CREATE TRIGGER set_session_token_trigger
+BEFORE INSERT ON public.optimization_sessions
+FOR EACH ROW
+EXECUTE FUNCTION public.set_session_token();
+```
+
+## Setting Up in Supabase
+
+1. Go to your Supabase project dashboard
+2. Navigate to the SQL Editor
+3. Create a new query and paste the SQL commands for each table
+4. Run the commands to create the tables
+5. Set up storage buckets through the Storage interface or via SQL
+6. Configure authentication settings in the Authentication section
+7. Test the schema with some sample data
+
+## Custom Claims for Stripe Integration
+
+To handle Stripe customer IDs and subscription status, set up custom claims:
+
+```sql
+-- Function to handle user signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.users (id, email, subscription_type)
+  VALUES (NEW.id, NEW.email, 'free');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger the function every time a user is created
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Function to update custom claims with subscription status
+CREATE OR REPLACE FUNCTION public.update_subscription_claim()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.subscription_type IS DISTINCT FROM OLD.subscription_type THEN
+    UPDATE auth.users 
+    SET raw_app_meta_data = 
+      jsonb_set(
+        raw_app_meta_data, 
+        '{subscription}',
+        to_jsonb(NEW.subscription_type)
+      )
+    WHERE id = NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to update claims when subscription changes
+CREATE TRIGGER on_subscription_updated
+  AFTER UPDATE ON public.users
+  FOR EACH ROW
+  WHEN (NEW.subscription_type IS DISTINCT FROM OLD.subscription_type)
+  EXECUTE FUNCTION public.update_subscription_claim();
+```

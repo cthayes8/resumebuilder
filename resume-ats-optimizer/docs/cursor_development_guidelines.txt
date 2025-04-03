@@ -1,0 +1,122 @@
+# Cursor Development Guidelines for Resume ATS Optimizer
+
+## Code Organization
+
+### Project Structure
+- Use Next.js App Router structure
+- Separate API routes from frontend components
+- Keep AI processing logic in dedicated services
+- Follow feature-based organization
+
+```
+src/
+├── app/                    # App Router pages
+├── components/             # React components
+│   ├── ui/                 # Base UI components
+│   ├── forms/              # Form components
+│   ├── analysis/           # Analysis-related components
+│   └── optimization/       # Optimization-related components
+├── lib/                    # Utility functions
+│   ├── ai/                 # AI processing functions
+│   ├── document/           # Document processing utilities
+│   └── helpers/            # General helper functions
+├── services/               # External service integrations
+│   ├── openai/             # OpenAI API integration
+│   ├── stripe/             # Stripe payment integration
+│   └── storage/            # File storage services
+└── types/                  # TypeScript type definitions
+```
+
+### Component Patterns
+- Use React Server Components where possible
+- Client components only when interactivity is needed
+- Custom hooks for shared logic
+- Context providers for shared state
+
+## Coding Standards
+
+### TypeScript Usage
+- Define interfaces for all data structures
+- Use type inference where appropriate
+- Avoid `any` type; use proper typing
+- Define API response types explicitly
+
+### AI Integration
+- Keep prompts in separate configuration files
+- Implement retry logic for API calls
+- Error handling for all AI responses
+- Cache identical requests
+- Include response validation
+
+### API Design
+- RESTful endpoints for core functionality
+- Proper error status codes
+- Request validation middleware
+- Rate limiting on public endpoints
+
+## Performance Guidelines
+
+### Optimization Considerations
+- Lazy load non-critical components
+- Implement suspense boundaries
+- Use streaming for large responses
+- Optimize images and assets
+- Implement proper caching
+
+### AI Cost Optimization
+- Use GPT-3.5 for basic tasks
+- Reserve GPT-4 for critical analysis
+- Batch requests where possible
+- Implement token counting and limits
+
+## Testing Strategy
+
+### Test Coverage Requirements
+- Unit tests for utility functions
+- Integration tests for AI services
+- End-to-end tests for critical user flows
+- Component tests for UI elements
+
+### Test Implementation
+- Jest for unit and integration tests
+- React Testing Library for component tests
+- Mock API responses for deterministic testing
+- Separate test fixtures from test logic
+
+## Security Guidelines
+
+### Data Handling
+- No persistent storage of resumes beyond session
+- Encrypt data in transit
+- Implement proper CORS policies
+- Sanitize user inputs
+
+### Authentication
+- Secure payment flow
+- Implement CSRF protection
+- Rate limiting on auth endpoints
+
+## Deployment Workflow
+
+### Environment Configuration
+- Use environment variables for configuration
+- Separate dev/staging/production environments
+- Feature flags for gradual rollout
+
+### CI/CD Pipeline
+- Automated testing before deployment
+- Static analysis and linting
+- Build performance monitoring
+- Rollback capability
+
+## Monitoring and Debugging
+
+### Error Tracking
+- Implement global error boundary
+- Log critical errors
+- User feedback collection for errors
+
+### Performance Monitoring
+- Track API response times
+- Monitor AI request latency
+- Track conversion funnel metrics

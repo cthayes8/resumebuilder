@@ -1,0 +1,557 @@
+# UI Components Reference (21st Dev MCP)
+
+This document outlines the UI components for the Resume ATS Optimizer application, leveraging the 21st Dev MCP component library whenever possible. Use this as a reference when implementing the frontend.
+
+## MCP Component Integration
+
+### Import Pattern
+```jsx
+import { Button, Card, TextField, ProgressBar } from '@21stdev/mcp';
+```
+
+### Theme Configuration
+```jsx
+// Configure MCP theme to match our application
+import { ThemeProvider } from '@21stdev/mcp';
+
+// In _app.jsx or layout.jsx
+<ThemeProvider
+  theme={{
+    colors: {
+      primary: '#2563EB',
+      secondary: '#16A34A',
+      error: '#EF4444',
+      warning: '#F59E0B',
+      info: '#3B82F6',
+      success: '#22C55E',
+    },
+    typography: {
+      fontFamily: 'Inter, sans-serif',
+    },
+  }}
+>
+  <App />
+</ThemeProvider>
+```
+
+## Page Layouts Using MCP Components
+
+### Landing Page
+```jsx
+import { 
+  Container, 
+  Hero, 
+  FeatureGrid, 
+  PricingTable, 
+  Testimonials,
+  FAQ,
+  CTAButton 
+} from '@21stdev/mcp';
+
+const LandingPage = () => (
+  <>
+    <Hero
+      title="Optimize Your Resume for ATS"
+      subtitle="Get past the AI gatekeepers with our ATS-optimized resume tool"
+      ctaButton={<CTAButton>Get Started</CTAButton>}
+      image="/images/hero-image.svg"
+    />
+    
+    <FeatureGrid
+      features={[
+        { title: "AI-Powered Analysis", description: "...", icon: "chart" },
+        { title: "Keyword Optimization", description: "...", icon: "search" },
+        { title: "ATS-Friendly Formatting", description: "...", icon: "document" },
+        // ...
+      ]}
+    />
+    
+    <PricingTable
+      plans={[
+        { 
+          name: "One-Time", 
+          price: "$19.99", 
+          features: ["Single resume optimization", "..."], 
+          cta: "Buy Now" 
+        },
+        { 
+          name: "Subscription", 
+          price: "$9.99/mo", 
+          features: ["Unlimited optimizations", "..."], 
+          cta: "Subscribe", 
+          highlighted: true 
+        },
+      ]}
+    />
+    
+    <FAQ
+      questions={[
+        { 
+          question: "What is an ATS?", 
+          answer: "An Applicant Tracking System (ATS) is software that..."
+        },
+        // ...
+      ]}
+    />
+  </>
+);
+```
+
+### Upload Page
+```jsx
+import { 
+  Container, 
+  FileUpload, 
+  TextArea, 
+  Card, 
+  Button,
+  Stepper
+} from '@21stdev/mcp';
+
+const UploadPage = () => (
+  <Container>
+    <Stepper
+      steps={["Upload", "Analyze", "Optimize", "Download"]}
+      activeStep={0}
+    />
+    
+    <Card title="Upload Your Resume">
+      <FileUpload
+        accept=".pdf,.docx"
+        maxSize={5 * 1024 * 1024}
+        label="Drag and drop your resume or click to browse"
+        onUpload={handleFileUpload}
+      />
+    </Card>
+    
+    <Card title="Job Description">
+      <TextArea
+        label="Paste the job description"
+        placeholder="Copy and paste the job description here..."
+        rows={10}
+        onChange={handleJobDescriptionChange}
+      />
+    </Card>
+    
+    <Button 
+      variant="primary" 
+      size="large"
+      onClick={handleContinue}
+      disabled={!resumeUploaded || !jobDescriptionEntered}
+    >
+      Continue to Analysis
+    </Button>
+  </Container>
+);
+```
+
+## Custom Components with MCP Base Elements
+
+### Compatibility Score Component
+```jsx
+import { Card, CircularProgress, Text } from '@21stdev/mcp';
+
+const CompatibilityMeter = ({ score, size = "large" }) => (
+  <Card>
+    <Text variant="subtitle">ATS Compatibility Score</Text>
+    <CircularProgress
+      value={score}
+      max={100}
+      size={size}
+      color={getScoreColor(score)} // Custom function for color logic
+      label={`${score}%`}
+    />
+    <Text>
+      {score < 50 ? "Needs improvement" : 
+       score < 70 ? "Good start" : 
+       score < 90 ? "Very good" : "Excellent"}
+    </Text>
+  </Card>
+);
+```
+
+### Keyword Match Display
+```jsx
+import { 
+  Card, 
+  Chip, 
+  List, 
+  ListItem, 
+  Button, 
+  Tooltip,
+  Icon
+} from '@21stdev/mcp';
+
+const KeywordMatchDisplay = ({ matches, missing, onAddKeyword }) => (
+  <Card title="Keyword Analysis">
+    <Text variant="subtitle">Matched Keywords</Text>
+    <div className="flex flex-wrap gap-2">
+      {matches.map(match => (
+        <Tooltip title={`Found in: ${match.context}`}>
+          <Chip
+            key={match.keyword}
+            label={match.keyword}
+            color="success"
+            icon={<Icon name="check" />}
+          />
+        </Tooltip>
+      ))}
+    </div>
+    
+    <Text variant="subtitle" className="mt-4">Missing Keywords</Text>
+    <List>
+      {missing.map(keyword => (
+        <ListItem
+          key={keyword.keyword}
+          primary={keyword.keyword}
+          secondary={`Importance: ${keyword.importance}/10`}
+          action={
+            <Button
+              variant="text"
+              onClick={() => onAddKeyword(keyword)}
+              startIcon={<Icon name="plus" />}
+            >
+              Add
+            </Button>
+          }
+        />
+      ))}
+    </List>
+  </Card>
+);
+```
+
+### Suggestion Card Component
+```jsx
+import { 
+  Card, 
+  Text, 
+  Button, 
+  Divider,
+  Chip,
+  DiffViewer 
+} from '@21stdev/mcp';
+
+const SuggestionCard = ({ 
+  original, 
+  improved, 
+  explanation, 
+  category,
+  onAccept,
+  onReject,
+  onEdit
+}) => (
+  <Card className="mb-4">
+    <div className="flex justify-between items-center mb-3">
+      <Text variant="h6">Suggested Improvement</Text>
+      <Chip 
+        label={category} 
+        color={
+          category === "keyword" ? "primary" : 
+          category === "format" ? "secondary" : 
+          "info"
+        } 
+      />
+    </div>
+    
+    <DiffViewer
+      original={original}
+      modified={improved}
+      splitView={false}
+      showLineNumbers={false}
+    />
+    
+    <Divider className="my-3" />
+    
+    <Text variant="body2" className="italic mb-3">
+      {explanation}
+    </Text>
+    
+    <div className="flex justify-end gap-2">
+      <Button variant="outlined" color="error" onClick={onReject}>
+        Reject
+      </Button>
+      <Button variant="outlined" color="secondary" onClick={onEdit}>
+        Edit
+      </Button>
+      <Button variant="contained" color="primary" onClick={onAccept}>
+        Accept
+      </Button>
+    </div>
+  </Card>
+);
+```
+
+## Form Components Using MCP
+
+### Job Description Form
+```jsx
+import { Card, TextArea, Button, Alert } from '@21stdev/mcp';
+
+const JobDescriptionForm = ({ 
+  initialValue = "", 
+  onSubmit, 
+  isLoading 
+}) => {
+  const [value, setValue] = useState(initialValue);
+  const [error, setError] = useState("");
+  
+  const handleSubmit = () => {
+    if (value.length < 100) {
+      setError("Please enter a more detailed job description (minimum 100 characters)");
+      return;
+    }
+    onSubmit(value);
+  };
+  
+  return (
+    <Card title="Job Description">
+      {error && <Alert severity="error" onClose={() => setError("")}>{error}</Alert>}
+      
+      <TextArea
+        label="Paste the job description"
+        placeholder="Copy and paste the job description here..."
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        rows={10}
+        fullWidth
+      />
+      
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={handleSubmit}
+        loading={isLoading}
+        disabled={isLoading}
+        className="mt-4"
+      >
+        Analyze
+      </Button>
+    </Card>
+  );
+};
+```
+
+### Payment Form Integration
+```jsx
+import { Card, RadioGroup, Radio, Button, Text } from '@21stdev/mcp';
+
+const PaymentForm = ({ onCheckout }) => {
+  const [plan, setPlan] = useState('one-time');
+  
+  return (
+    <Card title="Select a Plan">
+      <RadioGroup value={plan} onChange={e => setPlan(e.target.value)}>
+        <Radio
+          value="one-time"
+          label="One-Time Purchase"
+          description="$19.99 for a single resume optimization"
+        />
+        <Radio
+          value="subscription"
+          label="Monthly Subscription"
+          description="$9.99/month for unlimited optimizations"
+        />
+      </RadioGroup>
+      
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={() => onCheckout(plan)}
+        fullWidth
+        className="mt-4"
+      >
+        Proceed to Checkout
+      </Button>
+    </Card>
+  );
+};
+```
+
+## Feedback Components Using MCP
+
+### Loading States
+```jsx
+import { 
+  CircularProgress, 
+  LinearProgress, 
+  Skeleton,
+  Text,
+  Card
+} from '@21stdev/mcp';
+
+const LoadingIndicator = ({ type = "spinner", message, progress }) => (
+  <Card className="flex flex-col items-center p-6">
+    {type === "spinner" && (
+      <CircularProgress indeterminate size="large" />
+    )}
+    
+    {type === "progress" && (
+      <LinearProgress value={progress * 100} max={100} />
+    )}
+    
+    {type === "skeleton" && (
+      <>
+        <Skeleton variant="text" width="80%" height={40} />
+        <Skeleton variant="rectangular" width="100%" height={200} />
+        <Skeleton variant="text" width="60%" height={30} />
+      </>
+    )}
+    
+    {message && <Text className="mt-4">{message}</Text>}
+  </Card>
+);
+```
+
+### Result Summary
+```jsx
+import { 
+  Card, 
+  Text, 
+  Divider, 
+  List, 
+  ListItem,
+  Icon,
+  ProgressBar
+} from '@21stdev/mcp';
+
+const ResultSummary = ({ beforeScore, afterScore, keyImprovements }) => (
+  <Card title="Optimization Results">
+    <div className="flex justify-between mb-6">
+      <div>
+        <Text variant="caption">Before</Text>
+        <Text variant="h3">{beforeScore}%</Text>
+      </div>
+      
+      <Icon name="arrow-right" size="large" />
+      
+      <div>
+        <Text variant="caption">After</Text>
+        <Text variant="h3" color="success">{afterScore}%</Text>
+      </div>
+    </div>
+    
+    <ProgressBar 
+      value={afterScore} 
+      max={100}
+      color={afterScore > beforeScore ? "success" : "warning"}
+    />
+    
+    <Divider className="my-4" />
+    
+    <Text variant="subtitle">Key Improvements</Text>
+    <List>
+      {keyImprovements.map((improvement, index) => (
+        <ListItem
+          key={index}
+          primary={improvement.category}
+          secondary={improvement.description}
+          icon={<Icon name="check-circle" color="success" />}
+        />
+      ))}
+    </List>
+  </Card>
+);
+```
+
+## Custom Components Using MCP Base Elements
+
+When needed, create custom components by combining MCP base elements:
+
+### Two-Column Layout
+```jsx
+import { Container, Paper } from '@21stdev/mcp';
+
+const TwoColumnLayout = ({ 
+  leftColumn, 
+  rightColumn, 
+  leftWidth = "40%",
+  sticky = "none"
+}) => (
+  <Container>
+    <div className="flex flex-col md:flex-row gap-6">
+      <div 
+        className={`${sticky === 'left' ? 'md:sticky top-4 self-start' : ''}`}
+        style={{ width: { md: leftWidth } }}
+      >
+        <Paper>{leftColumn}</Paper>
+      </div>
+      
+      <div 
+        className={`${sticky === 'right' ? 'md:sticky top-4 self-start' : ''}`}
+        style={{ width: { md: `calc(100% - ${leftWidth} - 1.5rem)` } }}
+      >
+        <Paper>{rightColumn}</Paper>
+      </div>
+    </div>
+  </Container>
+);
+```
+
+## Integration with 21st Dev MCP Theme
+
+Ensure your application properly integrates with the MCP theme system:
+
+```jsx
+// src/theme/index.js
+import { createTheme } from '@21stdev/mcp';
+
+export const theme = createTheme({
+  colors: {
+    primary: '#2563EB',
+    secondary: '#16A34A',
+    accent: '#EC4899',
+    success: '#22C55E',
+    warning: '#F59E0B',
+    error: '#EF4444',
+    info: '#3B82F6',
+    neutral: '#6B7280',
+    background: '#F9FAFB',
+  },
+  typography: {
+    fontFamily: 'Inter, sans-serif',
+  },
+  spacing: {
+    xs: '0.5rem',    // 8px
+    sm: '0.75rem',   // 12px
+    md: '1rem',      // 16px
+    lg: '1.5rem',    // 24px
+    xl: '2rem',      // 32px
+    xxl: '3rem',     // 48px
+  },
+  breakpoints: {
+    sm: '640px',
+    md: '768px',
+    lg: '1024px',
+    xl: '1280px',
+    xxl: '1536px',
+  },
+});
+```
+
+## Missing MCP Components
+
+For any components not available in the MCP library, create custom implementations that match the MCP design system:
+
+```jsx
+// Example of a custom component when needed
+import { Card, Text } from '@21stdev/mcp';
+
+const PDFPreviewCard = ({ url, height = '600px' }) => (
+  <Card title="Resume Preview">
+    <div className="w-full" style={{ height }}>
+      {url ? (
+        <iframe 
+          src={url} 
+          className="w-full h-full border-0" 
+          title="Resume Preview"
+        />
+      ) : (
+        <div className="flex items-center justify-center h-full bg-gray-100">
+          <Text>No preview available</Text>
+        </div>
+      )}
+    </div>
+  </Card>
+);
+```

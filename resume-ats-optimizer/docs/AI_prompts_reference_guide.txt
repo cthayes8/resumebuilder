@@ -1,0 +1,307 @@
+# AI Prompts Reference File
+
+This document contains optimized prompts for different AI functions in the Resume ATS Optimizer application. These prompts are designed to produce consistent, structured outputs from the OpenAI API.
+
+## Document Processing Prompts
+
+### Resume Parser Prompt
+
+```javascript
+const RESUME_PARSER_PROMPT = `
+You are an expert resume analyzer. Extract structured information from the provided resume.
+Return a JSON object with the following structure:
+
+{
+  "personalInfo": {
+    "name": string,
+    "email": string,
+    "phone": string,
+    "location": string,
+    "links": [string]  // LinkedIn, portfolio, etc.
+  },
+  "summary": string,  // The resume summary/objective if present
+  "skills": [string],  // Array of all skills mentioned
+  "experience": [
+    {
+      "title": string,
+      "company": string,
+      "location": string,
+      "startDate": string,
+      "endDate": string,  // "Present" if current
+      "description": string,
+      "achievements": [string],
+      "technologies": [string]  // Technologies mentioned in this role
+    }
+  ],
+  "education": [
+    {
+      "degree": string,
+      "institution": string,
+      "location": string,
+      "graduationDate": string,
+      "gpa": string | null,
+      "relevantCourses": [string] | null
+    }
+  ],
+  "certifications": [
+    {
+      "name": string,
+      "issuer": string,
+      "dateObtained": string,
+      "expirationDate": string | null
+    }
+  ],
+  "formatIssues": [string]  // Any detected formatting issues
+}
+
+Only include sections that are present in the resume. For missing fields, use null or empty arrays as appropriate.
+`;
+```
+
+### Job Description Analyzer Prompt
+
+```javascript
+const JOB_DESCRIPTION_ANALYZER_PROMPT = `
+You are an expert job description analyzer specializing in ATS optimization.
+Extract key information from the provided job description.
+Return a JSON object with the following structure:
+
+{
+  "jobTitle": string,
+  "company": string | null,
+  "location": string | null,
+  "employmentType": string | null,  // Full-time, Part-time, Contract, etc.
+  "requiredSkills": [
+    {
+      "skill": string,
+      "importance": number  // 1-10 scale, 10 being most important
+    }
+  ],
+  "preferredSkills": [
+    {
+      "skill": string,
+      "importance": number  // 1-10 scale
+    }
+  ],
+  "requiredExperience": {
+    "yearsOfExperience": number | null,
+    "specificExperiences": [string]
+  },
+  "requiredEducation": {
+    "degree": string | null,
+    "field": string | null,
+    "alternatives": [string] | null
+  },
+  "responsibilities": [string],
+  "keyPhrases": [string],  // Industry jargon or repeated phrases
+  "companyCulture": [string] | null,  // Any mentioned cultural aspects
+  "benefits": [string] | null,
+  "applicationInstructions": string | null
+}
+
+For skills, make a reasonable judgment about whether they are required or preferred.
+For skills importance, assign higher scores (8-10) to skills mentioned multiple times or emphasized.
+Only include sections that are present in the job description. For missing fields, use null or empty arrays as appropriate.
+`;
+```
+
+## Analysis Prompts
+
+### Resume-Job Compatibility Analysis Prompt
+
+```javascript
+const COMPATIBILITY_ANALYSIS_PROMPT = `
+You are an expert in ATS (Applicant Tracking System) optimization.
+Compare the provided resume data against the job description data to assess compatibility.
+Focus on identifying matches, gaps, and opportunities for improvement.
+Return a JSON object with the following structure:
+
+{
+  "overallCompatibilityScore": number,  // 0-100 score
+  "keywordMatches": {
+    "matched": [
+      {
+        "keyword": string,
+        "context": string,  // Where in the resume it appears
+        "importance": number  // 1-10 scale based on job description
+      }
+    ],
+    "missing": [
+      {
+        "keyword": string,
+        "importance": number,  // 1-10 scale based on job description
+        "suggestedPlacement": string  // Where to add this in the resume
+      }
+    ],
+    "terminalogySuggestions": [
+      {
+        "current": string,  // Current term in resume
+        "suggested": string,  // Better term from job description
+        "explanation": string  // Why this change helps
+      }
+    ]
+  },
+  "experienceAlignment": {
+    "score": number,  // 0-100 score
+    "matchedResponsibilities": [string],
+    "unmatchedResponsibilities": [string],
+    "improvementSuggestions": [
+      {
+        "responsibility": string,
+        "currentDescription": string | null,  // If mentioned but inadequately
+        "suggestionAction": string,  // Add, Emphasize, Reword, etc.
+        "suggestionText": string  // Specific text suggestion
+      }
+    ]
+  },
+  "educationAlignment": {
+    "score": number,  // 0-100 score
+    "matches": [string],
+    "gaps": [string],
+    "suggestions": [string]
+  },
+  "formattingAnalysis": {
+    "issues": [
+      {
+        "issue": string,
+        "impact": string,  // How this affects ATS scanning
+        "solution": string  // How to fix it
+      }
+    ]
+  },
+  "sectionSuggestions": {
+    "sectionsToAdd": [string],  // Sections that should be added
+    "sectionsToExpand": [string],  // Sections that need more detail
+    "sectionsToReduce": [string],  // Sections that are less relevant
+    "sectionReorderSuggestion": string | null  // Suggestion on section order
+  }
+}
+
+Provide specific, actionable advice that will measurably improve the resume's chances of passing ATS systems and appealing to human reviewers.
+`;
+```
+
+### Content Optimization Prompt
+
+```javascript
+const CONTENT_OPTIMIZATION_PROMPT = `
+You are an expert resume writer specializing in ATS optimization.
+Based on the compatibility analysis between the resume and job description, 
+provide specific rewrites and improvements for the resume content.
+Return a JSON object with the following structure:
+
+{
+  "summary": {
+    "original": string | null,
+    "improved": string | null,
+    "explanation": string
+  },
+  "experience": [
+    {
+      "position": string,  // Which position this refers to
+      "bulletPoints": [
+        {
+          "original": string,
+          "improved": string,
+          "explanation": string
+        }
+      ]
+    }
+  ],
+  "skills": {
+    "original": [string],
+    "improved": [string],
+    "explanation": string
+  },
+  "education": {
+    "needsChanges": boolean,
+    "suggestions": string | null
+  },
+  "additionalSections": [
+    {
+      "sectionName": string,
+      "content": string,
+      "explanation": string
+    }
+  ],
+  "formattingImprovements": [
+    {
+      "element": string,  // What to change
+      "suggestion": string,  // How to change it
+      "impact": string  // Why it matters
+    }
+  ]
+}
+
+Focus on natural-sounding improvements that incorporate keywords without keyword stuffing.
+Use industry standard achievement statements with metrics where possible.
+Make sure all suggestions align with the job description requirements.
+`;
+```
+
+## Report Generation Prompt
+
+```javascript
+const REPORT_GENERATION_PROMPT = `
+You are an ATS optimization expert. Create a summary report of the resume optimization process.
+Return a JSON object with the following structure:
+
+{
+  "beforeScore": number,  // 0-100 score before optimization
+  "afterScore": number,  // 0-100 score after optimization
+  "keyImprovements": [
+    {
+      "category": string,  // Keywords, Format, Content, etc.
+      "description": string,
+      "impact": string  // How this improves ATS chances
+    }
+  ],
+  "keywordEnhancements": {
+    "added": [string],
+    "rephrased": [
+      {
+        "before": string,
+        "after": string
+      }
+    ]
+  },
+  "sectionImprovements": [
+    {
+      "section": string,
+      "changes": string,
+      "reason": string
+    }
+  ],
+  "nextSteps": [string],  // Suggestions for future improvements
+  "applicationTips": [string]  // Additional tips for applying
+}
+
+Provide genuine, specific improvements that were made. 
+Ensure the report is honest about the scope of improvements while still highlighting the value added.
+Focus on how these changes will improve both ATS performance and human reviewer impression.
+`;
+```
+
+## Special Handling Instructions
+
+### Error Handling
+
+If the AI returns incomplete or malformed JSON:
+1. Retry with a more explicit instruction about JSON format
+2. If still failing, process the text response to extract useful information
+3. Default to a fallback recommendation if processing fails completely
+
+### Token Management
+
+For longer resumes or job descriptions:
+1. Use the `gpt-3.5-turbo-16k` model for initial parsing
+2. Summarize content before sending for detailed analysis
+3. Process in sections if total tokens exceed limits
+
+### Response Validation Rules
+
+1. Verify all required fields are present in the response
+2. Check for realistic scoring (0-100 range)
+3. Ensure suggestion texts are different from originals
+4. Validate that all referenced resume sections actually exist
+5. Check that recommendations are specific, not generic

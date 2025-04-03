@@ -1,0 +1,261 @@
+# API Endpoints Documentation
+
+This document outlines all API endpoints for the Resume ATS Optimizer application. Use this as a reference when implementing server-side logic and frontend integration.
+
+## Authentication Endpoints
+
+### POST /api/auth/register
+Create a new user account
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**Response:**
+```json
+{
+  "userId": "user_123",
+  "email": "user@example.com"
+}
+```
+
+### POST /api/auth/login
+Authenticate a user
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**Response:**
+```json
+{
+  "userId": "user_123",
+  "email": "user@example.com",
+  "token": "jwt_token_here"
+}
+```
+
+## Document Processing Endpoints
+
+### POST /api/resume/upload
+Upload and parse a resume
+
+**Request:**
+- Multipart form data with `file` field
+- OR JSON body with `content` field (plain text)
+
+**Response:**
+```json
+{
+  "uploadId": "resume_123",
+  "parsedData": {
+    "personalInfo": { ... },
+    "skills": [ ... ],
+    "experience": [ ... ],
+    "education": [ ... ],
+    "certifications": [ ... ]
+  },
+  "formatIssues": [ ... ]
+}
+```
+
+### POST /api/job-description/upload
+Upload and parse a job description
+
+**Request Body:**
+```json
+{
+  "content": "Full job description text..."
+}
+```
+
+**Response:**
+```json
+{
+  "uploadId": "job_123",
+  "parsedData": {
+    "jobTitle": "...",
+    "requiredSkills": [ ... ],
+    "preferredSkills": [ ... ],
+    "requiredExperience": { ... },
+    "responsibilities": [ ... ],
+    "keyPhrases": [ ... ]
+  }
+}
+```
+
+## Analysis Endpoints
+
+### POST /api/analyze/compatibility
+Analyze resume-job compatibility
+
+**Request Body:**
+```json
+{
+  "resumeId": "resume_123",
+  "jobDescriptionId": "job_123"
+}
+```
+
+**Response:**
+```json
+{
+  "analysisId": "analysis_123",
+  "results": {
+    "overallCompatibilityScore": 75,
+    "keywordMatches": { ... },
+    "experienceAlignment": { ... },
+    "educationAlignment": { ... },
+    "formattingAnalysis": { ... },
+    "sectionSuggestions": { ... }
+  }
+}
+```
+
+### POST /api/analyze/generate-optimizations
+Generate optimization suggestions based on analysis
+
+**Request Body:**
+```json
+{
+  "analysisId": "analysis_123"
+}
+```
+
+**Response:**
+```json
+{
+  "optimizationId": "opt_123",
+  "suggestions": {
+    "summary": { ... },
+    "experience": [ ... ],
+    "skills": { ... },
+    "education": { ... },
+    "additionalSections": [ ... ],
+    "formattingImprovements": [ ... ]
+  }
+}
+```
+
+## Document Generation Endpoints
+
+### POST /api/generate/resume
+Generate optimized resume based on selected suggestions
+
+**Request Body:**
+```json
+{
+  "resumeId": "resume_123",
+  "optimizationId": "opt_123",
+  "selectedSuggestions": {
+    "summary": true,
+    "experience": {
+      "position1": [0, 2],
+      "position2": [1]
+    },
+    "skills": true,
+    "education": false,
+    "additionalSections": ["projects"],
+    "formattingImprovements": [0, 1, 2]
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "optimizedResumeId": "optimized_123",
+  "downloadUrl": "/api/download/resume/optimized_123",
+  "report": { ... }
+}
+```
+
+### GET /api/download/resume/:id
+Download an optimized resume
+
+**Response:**
+- PDF or DOCX file download
+
+## Payment Endpoints
+
+### POST /api/payment/create-checkout
+Create a Stripe checkout session
+
+**Request Body:**
+```json
+{
+  "productType": "one-time",
+  "successUrl": "https://yourapp.com/success",
+  "cancelUrl": "https://yourapp.com/cancel"
+}
+```
+
+**Response:**
+```json
+{
+  "sessionId": "stripe_session_123",
+  "checkoutUrl": "https://checkout.stripe.com/..."
+}
+```
+
+### POST /api/payment/webhook
+Stripe webhook handler
+
+**Request:**
+- Stripe webhook event
+
+**Response:**
+- 200 OK
+
+## Session Management Endpoints
+
+### GET /api/sessions
+Get user's optimization sessions
+
+**Response:**
+```json
+{
+  "sessions": [
+    {
+      "id": "session_123",
+      "createdAt": "2023-04-15T12:00:00Z",
+      "completedAt": "2023-04-15T12:05:00Z",
+      "analysisResults": { ... },
+      "optimizedResumeId": "optimized_123"
+    },
+    ...
+  ]
+}
+```
+
+### GET /api/sessions/:id
+Get a specific optimization session
+
+**Response:**
+```json
+{
+  "id": "session_123",
+  "createdAt": "2023-04-15T12:00:00Z",
+  "completedAt": "2023-04-15T12:05:00Z",
+  "resumeUploadId": "resume_123",
+  "jobDescriptionId": "job_123",
+  "analysisResults": { ... },
+  "optimizationSuggestions": { ... },
+  "optimizedResumeId": "optimized_123",
+  "report": { ... }
+}
+```
+
+## Error Handling
+
+All endpoints should return appropriate HTTP status codes:
+
+-

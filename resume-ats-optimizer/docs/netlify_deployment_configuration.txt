@@ -1,0 +1,302 @@
+# Netlify Deployment Configuration
+
+This document provides guidance for deploying the Resume ATS Optimizer to Netlify via GitHub integration. Follow these steps to ensure your application is properly configured for Netlify deployment.
+
+## GitHub Repository Setup
+
+1. Create a new GitHub repository for your project
+2. Initialize Git in your local project folder:
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git branch -M main
+   git remote add origin https://github.com/yourusername/resume-ats-optimizer.git
+   git push -u origin main
+   ```
+
+## Netlify Configuration File
+
+Create a `netlify.toml` file in the root of your project:
+
+```toml
+[build]
+  command = "npm run build"
+  publish = ".next"
+  
+[build.environment]
+  NEXT_TELEMETRY_DISABLED = "1"
+  NODE_VERSION = "18"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[[redirects]]
+  from = "/*"
+  to = "/404"
+  status = 404
+
+[functions]
+  included_files = ["node_modules/@netlify/plugin-nextjs/plugin/lib/**"]
+  external_node_modules = ["@supabase/supabase-js", "openai", "pdf-parse", "mammoth"]
+  node_bundler = "esbuild"
+```
+
+## Next.js Configuration for Netlify
+
+Update your `next.config.js` to be compatible with Netlify:
+
+```javascript
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  images: {
+    domains: ['localhost'],
+    unoptimized: process.env.NODE_ENV !== 'development',
+  },
+  experimental: {
+    serverActions: true,
+  },
+  webpack: (config) => {
+    // Resolve node module usage in the browser
+    config.resolve.fallback = {
+      fs: false,
+      path: false,
+    };
+    return config;
+  },
+  // Add swcMinify for better performance in production
+  swcMinify: true,
+};
+
+module.exports = nextConfig;
+```
+
+## Environment Variables
+
+Set up environment variables in Netlify:
+
+1. Go to your site settings in Netlify dashboard
+2. Navigate to "Environment" section
+3. Add the following environment variables:
+
+```
+# API Keys
+OPENAI_API_KEY=your_openai_api_key
+STRIPE_SECRET_KEY=your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# Stripe Configuration
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+STRIPE_ONE_TIME_PRICE_ID=your_stripe_one_time_price_id
+STRIPE_SUBSCRIPTION_PRICE_ID=your_stripe_subscription_price_id
+
+# Application Configuration
+NEXT_PUBLIC_APP_URL=https://your-netlify-app-name.netlify.app
+```
+
+Make sure to replace placeholder values with your actual API keys and settings.
+
+## Netlify Functions for API Routes
+
+When deploying to Netlify, your Next.js API routes will be converted to Netlify Functions. To ensure compatibility:
+
+1. Avoid using Node.js specific APIs in API routes
+2. Keep function sizes under Netlify's limits (50MB unzipped, 250MB zipped)
+3. Be mindful of cold start times for serverless functions
+
+## Custom Domain Setup (Optional)
+
+To set up a custom domain:
+
+1. Go to your site settings in Netlify dashboard
+2. Navigate to "Domain management" section
+3. Click "Add custom domain"
+4. Follow the instructions to configure your DNS settings
+
+## Handling Authentication with Netlify
+
+For Supabase authentication to work correctly:
+
+1. Update your Site URL in Supabase dashboard to match your Netlify URL
+2. Add your Netlify domain to the list of allowed redirect URLs in Supabase
+
+## Continuous Deployment
+
+Netlify automatically deploys when you push to your GitHub repository. Configure branch deploys:
+
+1. Go to your site settings in Netlify dashboard
+2. Navigate to "Build & deploy" → "Continuous deployment"
+3. Configure deployment settings for different branches
+
+## Previewing Builds
+
+Netlify automatically creates deploy previews for pull requests:
+
+1. Create a new branch for features/changes
+   ```bash
+   git checkout -b feature/new-feature
+   ```
+2. Make your changes and push to GitHub
+   ```bash
+   git add .
+   git commit -m "Add new feature"
+   git push origin feature/new-feature
+   ```
+3. Create a pull request on GitHub
+4. Netlify will automatically create a preview deployment
+
+## Post-Deployment Verification
+
+After deploying, verify:
+
+1. API routes are functioning correctly
+2. Authentication flows work properly
+3. Stripe webhooks are correctly configured for production
+4. File uploads and processing work as expected
+
+## Troubleshooting Common Issues
+
+### Build Failures
+
+If your build fails, check:
+
+1. Netlify build logs for specific errors
+2. Ensure all dependencies are properly listed in package.json
+3. Check if any environment variables are missing
+
+### API Routes Not Working
+
+If API routes aren't working:
+
+1. Check Netlify function logs
+2. Verify environment variables are correctly set
+3. Ensure there are no Node.js-specific APIs being used
+
+### Authentication Issues
+
+For authentication problems:
+
+1. Verify Supabase URL and API keys
+2. Check that site URL in Supabase matches your Netlify URL
+3. Ensure cookies are being handled correctly
+
+## Optimizing for Production
+
+### Caching Strategy
+
+Set up proper caching headers:
+
+```javascript
+// Add to your API route handlers
+export function headers() {
+  return {
+    'Cache-Control': 'no-store',
+  };
+}
+
+// For static assets
+export const runtime = 'edge';
+```
+
+### Performance Monitoring
+
+Set up performance monitoring:
+
+1. Enable Netlify Analytics in your dashboard
+2. Consider adding a performance monitoring tool like WebVitals
+
+```javascript
+// pages/_app.js
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
+import * as Fathom from 'fathom-client';
+
+export default function App({ Component, pageProps }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Initialize analytics
+    Fathom.load('YOUR_FATHOM_ID', {
+      includedDomains: ['your-app.netlify.app'],
+    });
+
+    function onRouteChangeComplete() {
+      Fathom.trackPageview();
+    }
+
+    // Record a pageview when route changes
+    router.events.on('routeChangeComplete', onRouteChangeComplete);
+
+    return () => {
+      router.events.off('routeChangeComplete', onRouteChangeComplete);
+    };
+  }, [router.events]);
+
+  return <Component {...pageProps} />;
+}
+```
+
+## GitHub Actions Workflow (Optional)
+
+Create a GitHub Actions workflow for additional CI/CD steps before Netlify deployment:
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+```
+
+## Scheduled Database Cleanup (Optional)
+
+Set up a scheduled function to clean up old data:
+
+1. Create a new Netlify function for database cleanup
+2. Configure a scheduled event trigger
+
+```javascript
+// netlify/functions/cleanup.js
+exports.handler = async (event) => {
+  // Authenticate with Supabase
+  // Delete old sessions and temporary data
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ message: 'Cleanup complete' }),
+  };
+};
+```
+
+Then in `netlify.toml`:
+
+```toml
+[[plugins]]
+  package = "@netlify/plugin-functions-schedule"
+
+  [plugins.inputs]
+    daily = ["cleanup"]
+```

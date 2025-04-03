@@ -1,0 +1,311 @@
+// Resume ATS Optimizer - Data Schemas
+// Use these type definitions throughout the application
+
+// Resume Data Types
+export interface PersonalInfo {
+  name: string;
+  email: string;
+  phone?: string;
+  location?: string;
+  links?: string[];
+}
+
+export interface ExperienceItem {
+  title: string;
+  company: string;
+  location?: string;
+  startDate: string;
+  endDate: string;
+  description?: string;
+  achievements: string[];
+  technologies?: string[];
+}
+
+export interface EducationItem {
+  degree: string;
+  institution: string;
+  location?: string;
+  graduationDate: string;
+  gpa?: string;
+  relevantCourses?: string[];
+}
+
+export interface CertificationItem {
+  name: string;
+  issuer: string;
+  dateObtained: string;
+  expirationDate?: string;
+}
+
+export interface ResumeData {
+  personalInfo: PersonalInfo;
+  summary?: string;
+  skills: string[];
+  experience: ExperienceItem[];
+  education: EducationItem[];
+  certifications?: CertificationItem[];
+  formatIssues?: string[];
+}
+
+// Job Description Data Types
+export interface SkillRequirement {
+  skill: string;
+  importance: number; // 1-10 scale
+}
+
+export interface ExperienceRequirement {
+  yearsOfExperience?: number;
+  specificExperiences: string[];
+}
+
+export interface EducationRequirement {
+  degree?: string;
+  field?: string;
+  alternatives?: string[];
+}
+
+export interface JobDescriptionData {
+  jobTitle: string;
+  company?: string;
+  location?: string;
+  employmentType?: string;
+  requiredSkills: SkillRequirement[];
+  preferredSkills?: SkillRequirement[];
+  requiredExperience: ExperienceRequirement;
+  requiredEducation?: EducationRequirement;
+  responsibilities: string[];
+  keyPhrases: string[];
+  companyCulture?: string[];
+  benefits?: string[];
+  applicationInstructions?: string;
+}
+
+// Analysis Results Types
+export interface KeywordMatch {
+  keyword: string;
+  context: string;
+  importance: number;
+}
+
+export interface MissingKeyword {
+  keyword: string;
+  importance: number;
+  suggestedPlacement: string;
+}
+
+export interface TerminologySuggestion {
+  current: string;
+  suggested: string;
+  explanation: string;
+}
+
+export interface KeywordAnalysis {
+  matched: KeywordMatch[];
+  missing: MissingKeyword[];
+  terminologySuggestions?: TerminologySuggestion[];
+}
+
+export interface ResponsibilitySuggestion {
+  responsibility: string;
+  currentDescription?: string;
+  suggestionAction: string;
+  suggestionText: string;
+}
+
+export interface ExperienceAnalysis {
+  score: number;
+  matchedResponsibilities: string[];
+  unmatchedResponsibilities: string[];
+  improvementSuggestions: ResponsibilitySuggestion[];
+}
+
+export interface EducationAnalysis {
+  score: number;
+  matches: string[];
+  gaps: string[];
+  suggestions: string[];
+}
+
+export interface FormattingIssue {
+  issue: string;
+  impact: string;
+  solution: string;
+}
+
+export interface SectionSuggestions {
+  sectionsToAdd?: string[];
+  sectionsToExpand?: string[];
+  sectionsToReduce?: string[];
+  sectionReorderSuggestion?: string;
+}
+
+export interface CompatibilityAnalysis {
+  overallCompatibilityScore: number;
+  keywordMatches: KeywordAnalysis;
+  experienceAlignment: ExperienceAnalysis;
+  educationAlignment: EducationAnalysis;
+  formattingAnalysis: {
+    issues: FormattingIssue[];
+  };
+  sectionSuggestions: SectionSuggestions;
+}
+
+// Optimization Suggestions Types
+export interface BulletPointSuggestion {
+  original: string;
+  improved: string;
+  explanation: string;
+}
+
+export interface ExperienceSuggestion {
+  position: string;
+  bulletPoints: BulletPointSuggestion[];
+}
+
+export interface AdditionalSectionSuggestion {
+  sectionName: string;
+  content: string;
+  explanation: string;
+}
+
+export interface FormattingImprovement {
+  element: string;
+  suggestion: string;
+  impact: string;
+}
+
+export interface OptimizationSuggestions {
+  summary?: {
+    original?: string;
+    improved: string;
+    explanation: string;
+  };
+  experience: ExperienceSuggestion[];
+  skills: {
+    original: string[];
+    improved: string[];
+    explanation: string;
+  };
+  education: {
+    needsChanges: boolean;
+    suggestions?: string;
+  };
+  additionalSections?: AdditionalSectionSuggestion[];
+  formattingImprovements: FormattingImprovement[];
+}
+
+// Report Types
+export interface KeyImprovement {
+  category: string;
+  description: string;
+  impact: string;
+}
+
+export interface RewordedKeyword {
+  before: string;
+  after: string;
+}
+
+export interface SectionImprovement {
+  section: string;
+  changes: string;
+  reason: string;
+}
+
+export interface OptimizationReport {
+  beforeScore: number;
+  afterScore: number;
+  keyImprovements: KeyImprovement[];
+  keywordEnhancements: {
+    added: string[];
+    rephrased: RewordedKeyword[];
+  };
+  sectionImprovements: SectionImprovement[];
+  nextSteps: string[];
+  applicationTips: string[];
+}
+
+// User and Session Types
+export interface User {
+  id: string;
+  email: string;
+  createdAt: Date;
+  subscription?: {
+    type: 'free' | 'one-time' | 'subscription';
+    expiresAt?: Date;
+  };
+}
+
+export interface OptimizationSession {
+  id: string;
+  userId?: string;
+  resumeUploadId: string;
+  jobDescriptionId: string;
+  createdAt: Date;
+  completedAt?: Date;
+  analysisResults?: CompatibilityAnalysis;
+  optimizationSuggestions?: OptimizationSuggestions;
+  optimizedResumeId?: string;
+  report?: OptimizationReport;
+}
+
+// API Request/Response Types
+export interface UploadResumeRequest {
+  file?: File; // For multipart form data
+  content?: string; // For text-based upload
+}
+
+export interface UploadResumeResponse {
+  uploadId: string;
+  parsedData: ResumeData;
+  formatIssues?: string[];
+}
+
+export interface AnalyzeCompatibilityRequest {
+  resumeId: string;
+  jobDescriptionId: string;
+}
+
+export interface AnalyzeCompatibilityResponse {
+  analysisId: string;
+  results: CompatibilityAnalysis;
+}
+
+export interface GenerateOptimizationsRequest {
+  analysisId: string;
+}
+
+export interface GenerateOptimizationsResponse {
+  optimizationId: string;
+  suggestions: OptimizationSuggestions;
+}
+
+export interface GenerateResumeRequest {
+  resumeId: string;
+  optimizationId: string;
+  selectedSuggestions: {
+    summary?: boolean;
+    experience: { [position: string]: number[] }; // Indices of accepted bullet points
+    skills: boolean;
+    education: boolean;
+    additionalSections: string[]; // Names of accepted additional sections
+    formattingImprovements: number[]; // Indices of accepted formatting improvements
+  };
+}
+
+export interface GenerateResumeResponse {
+  optimizedResumeId: string;
+  downloadUrl: string;
+  report: OptimizationReport;
+}
+
+export interface CreateCheckoutSessionRequest {
+  productType: 'one-time' | 'subscription';
+  successUrl: string;
+  cancelUrl: string;
+}
+
+export interface CreateCheckoutSessionResponse {
+  sessionId: string;
+  checkoutUrl: string;
+}

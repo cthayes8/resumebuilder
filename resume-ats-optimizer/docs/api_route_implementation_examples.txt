@@ -1,0 +1,373 @@
+// src/app/api/resume/upload/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import OpenAIService from '@/services/openai';
+import SupabaseService from '@/services/supabase';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+
+export async function POST(req: NextRequest) {
+  try {
+    // Check if request is multipart form data or JSON
+    const contentType = req.headers.get('content-type') || '';
+    
+    let resumeText: string;
+    let resumeFile: File | null = null;
+    let userId: string | undefined;
+    
+    // Check if user is authenticated
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      userId = session.user.id;
+    }
+    
+    if (contentType.includes('multipart/form-data')) {
+      // Handle file upload
+      const formData = await req.formData();
+      resumeFile = formData.get('file') as File;
+      
+      if (!resumeFile) {
+        return NextResponse.json(
+          { error: { code: 'invalid_input', message: 'No file uploaded' } },
+          { status: 400 }
+        );
+      }
+      
+      // Check file type
+      const fileType = resumeFile.name.split('.').pop()?.toLowerCase();
+      if (fileType !== 'pdf' && fileType !== 'docx') {
+        return NextResponse.json(
+          { error: { code: 'invalid_input', message: 'File must be PDF or DOCX' } },
+          { status: 400 }
+        );
+      }
+      
+      // Convert file to text (implementation depends on file type)
+      // For this example, we'll assume a helper function exists
+      resumeText = await extractTextFromFile(resumeFile);
+      
+      // Upload file to Supabase storage
+      const filePath = await SupabaseService.uploadResumeFile(userId, resumeFile);
+      console.log('File uploaded to:', filePath);
+    } else {
+      // Handle JSON input
+      const body = await req.json();
+      resumeText = body.content;
+      
+      if (!resumeText) {
+        return NextResponse.json(
+          { error: { code: 'invalid_input', message: 'No resume content provided' } },
+          { status: 400 }
+        );
+      }
+    }
+    
+    // Parse resume using OpenAI
+    const parsedResumeData = await OpenAIService.parseResume(resumeText);
+    
+    // Store parsed resume in Supabase
+    const resumeId = await SupabaseService.storeResume(userId, parsedResumeData);
+    
+    return NextResponse.json({
+      uploadId: resumeId,
+      parsedData: parsedResumeData,
+      formatIssues: parsedResumeData.formatIssues || []
+    });
+  } catch (error) {
+    console.error('Error uploading resume:', error);
+    return NextResponse.json(
+      { error: { code: 'processing_error', message: error.message } },
+      { status: 500 }
+    );
+  }
+}
+
+// Helper function to extract text from different file types
+async function extractTextFromFile(file: File): Promise<string> {
+  // In a real implementation, you would use libraries like pdf-parse or mammoth
+  // to extract text from PDF or DOCX files
+  // This is just a placeholder
+  return 'Extracted text from file';
+}
+
+// src/app/api/analyze/compatibility/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import OpenAIService from '@/services/openai';
+import SupabaseService from '@/services/supabase';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { resumeId, jobDescriptionId } = body;
+    
+    if (!resumeId || !jobDescriptionId) {
+      return NextResponse.json(
+        { error: { code: 'invalid_input', message: 'Resume ID and Job Description ID are required' } },
+        { status: 400 }
+      );
+    }
+    
+    // Check if user is authenticated
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    
+    // Retrieve resume and job description data
+    const resumeData = await SupabaseService.getResume(resumeId);
+    const jobData = await SupabaseService.getJobDescription(jobDescriptionId);
+    
+    // Create optimization session
+    const sessionId = await SupabaseService.createOptimizationSession(
+      userId, 
+      resumeId, 
+      jobDescriptionId
+    );
+    
+    // Analyze compatibility
+    const analysisResults = await OpenAIService.analyzeCompatibility(resumeData, jobData);
+    
+    // Save analysis results
+    await SupabaseService.saveAnalysisResults(sessionId, analysisResults);
+    
+    return NextResponse.json({
+      analysisId: sessionId,
+      results: analysisResults
+    });
+  } catch (error) {
+    console.error('Error analyzing compatibility:', error);
+    return NextResponse.json(
+      { error: { code: 'processing_error', message: error.message } },
+      { status: 500 }
+    );
+  }
+}
+
+// src/app/api/payment/create-checkout/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import StripeService from '@/services/stripe';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { productType, successUrl, cancelUrl } = body;
+    
+    if (!productType || !successUrl || !cancelUrl) {
+      return NextResponse.json(
+        { error: { code: 'invalid_input', message: 'Product type, success URL, and cancel URL are required' } },
+        { status: 400 }
+      );
+    }
+    
+    // Check if product type is valid
+    if (productType !== 'one-time' && productType !== 'subscription') {
+      return NextResponse.json(
+        { error: { code: 'invalid_input', message: 'Product type must be one-time or subscription' } },
+        { status: 400 }
+      );
+    }
+    
+    // Get user ID if authenticated
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    
+    // If user is not authenticated, redirect to login
+    if (!userId) {
+      return NextResponse.json(
+        { error: { code: 'unauthorized', message: 'Authentication required' } },
+        { status: 401 }
+      );
+    }
+    
+    // Create checkout session
+    const checkoutSession = await StripeService.createCheckoutSession({
+      productType,
+      successUrl: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl
+    });
+    
+    return NextResponse.json(checkoutSession);
+  } catch (error) {
+    console.error('Error creating checkout session:', error);
+    return NextResponse.json(
+      { error: { code: 'payment_error', message: error.message } },
+      { status: 500 }
+    );
+  }
+}
+
+// src/app/api/payment/webhook/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import StripeService from '@/services/stripe';
+import SupabaseService from '@/services/supabase';
+import { headers } from 'next/headers';
+import Stripe from 'stripe';
+
+// Disable body parsing, we need the raw body for Stripe signature verification
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.text();
+    const signature = headers().get('stripe-signature') || '';
+    
+    // Verify webhook signature
+    const event = StripeService.verifyWebhookEvent(body, signature);
+    
+    // Handle different event types
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        
+        // Extract user ID and product type
+        const userId = session.client_reference_id || '';
+        const productType = session.metadata?.productType as 'one-time' | 'subscription';
+        
+        if (!userId) {
+          console.error('No user ID in session:', session.id);
+          return NextResponse.json({ received: true });
+        }
+        
+        // Set expiry date for subscription
+        let expiryDate: Date | undefined;
+        if (productType === 'subscription') {
+          // Set expiry date 1 month from now
+          expiryDate = new Date();
+          expiryDate.setMonth(expiryDate.getMonth() + 1);
+        }
+        
+        // Update user subscription status
+        await SupabaseService.updateUserAfterPayment(userId, productType, expiryDate);
+        break;
+      }
+      
+      case 'invoice.payment_succeeded': {
+        // Handle subscription renewal
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = invoice.customer as string;
+        
+        // In a real implementation, you would look up the user by Stripe customer ID
+        // and update their subscription expiry date
+        console.log('Subscription renewed for customer:', customerId);
+        break;
+      }
+    }
+    
+    return NextResponse.json({ received: true });
+  } catch (error) {
+    console.error('Error handling webhook:', error);
+    return NextResponse.json(
+      { error: { code: 'webhook_error', message: error.message } },
+      { status: 400 }
+    );
+  }
+}
+
+// src/app/api/generate/resume/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import OpenAIService from '@/services/openai';
+import SupabaseService from '@/services/supabase';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { resumeId, optimizationId, selectedSuggestions } = body;
+    
+    if (!resumeId || !optimizationId) {
+      return NextResponse.json(
+        { error: { code: 'invalid_input', message: 'Resume ID and optimization ID are required' } },
+        { status: 400 }
+      );
+    }
+    
+    // Check if user is authenticated
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Get optimization session data
+    const sessionData = await SupabaseService.getSession(optimizationId);
+    
+    // Get original resume data
+    const originalResumeData = await SupabaseService.getResume(resumeId);
+    
+    // Apply selected suggestions to create optimized resume
+    // This would be a more complex implementation in reality
+    const optimizedResumeData = applyOptimizationSuggestions(
+      originalResumeData,
+      sessionData.optimizationSuggestions,
+      selectedSuggestions
+    );
+    
+    // Generate optimization report
+    const report = generateOptimizationReport(
+      originalResumeData,
+      optimizedResumeData,
+      sessionData.analysisResults,
+      selectedSuggestions
+    );
+    
+    // Store optimized resume
+    const optimizedResumeId = await SupabaseService.storeOptimizedResume(
+      optimizationId,
+      optimizedResumeData,
+      report
+    );
+    
+    // Generate download URL
+    const downloadUrl = `/api/download/resume/${optimizedResumeId}`;
+    
+    return NextResponse.json({
+      optimizedResumeId,
+      downloadUrl,
+      report
+    });
+  } catch (error) {
+    console.error('Error generating resume:', error);
+    return NextResponse.json(
+      { error: { code: 'processing_error', message: error.message } },
+      { status: 500 }
+    );
+  }
+}
+
+// Helper function to apply optimization suggestions
+function applyOptimizationSuggestions(originalResume, suggestions, selectedSuggestions) {
+  // This would be a more complex implementation in reality
+  // Just a placeholder for now
+  return {
+    ...originalResume,
+    // Apply changes based on selected suggestions
+  };
+}
+
+// Helper function to generate optimization report
+function generateOptimizationReport(originalResume, optimizedResume, analysisResults, selectedSuggestions) {
+  // This would be a more complex implementation in reality
+  // Just a placeholder for now
+  return {
+    beforeScore: analysisResults.overallCompatibilityScore,
+    afterScore: Math.min(analysisResults.overallCompatibilityScore + 20, 100),
+    keyImprovements: [
+      { category: 'Keywords', description: 'Added missing keywords', impact: 'Improved ATS visibility' }
+    ],
+    keywordEnhancements: {
+      added: ['skill1', 'skill2'],
+      rephrased: [{ before: 'old phrase', after: 'new phrase' }]
+    },
+    sectionImprovements: [
+      { section: 'Experience', changes: 'Enhanced job descriptions', reason: 'Better keyword alignment' }
+    ],
+    nextSteps: ['Customize cover letter', 'Prepare for interview questions'],
+    applicationTips: ['Submit during business hours', 'Follow up after one week']
+  };
+}
