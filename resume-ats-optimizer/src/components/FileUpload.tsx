@@ -7,9 +7,10 @@ interface FileUploadProps {
   name: string;
   accept: string;
   maxSize: number;
+  onUpload?: (file: File) => void;
 }
 
-export function FileUpload({ id, name, accept, maxSize }: FileUploadProps) {
+export function FileUpload({ id, name, accept, maxSize, onUpload }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,6 +54,7 @@ export function FileUpload({ id, name, accept, maxSize }: FileUploadProps) {
     }
 
     setSelectedFile(file);
+    onUpload?.(file);
   };
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
@@ -67,6 +69,7 @@ export function FileUpload({ id, name, accept, maxSize }: FileUploadProps) {
     }
 
     setSelectedFile(file);
+    onUpload?.(file);
   };
 
   const handleClick = () => {

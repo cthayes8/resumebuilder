@@ -65,7 +65,7 @@ export default function ForgotPasswordPage() {
             <p className="mt-2 text-sm text-gray-600">
               Or{' '}
               <Link
-                href="/login"
+                href="/sign-in"
                 className="font-medium text-blue-600 hover:text-blue-500"
               >
                 return to login
@@ -132,7 +132,7 @@ export default function ForgotPasswordPage() {
 
           <div className="text-center">
             <Link
-              href="/login"
+              href="/sign-in"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
               Back to login

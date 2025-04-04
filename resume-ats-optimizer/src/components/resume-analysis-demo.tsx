@@ -7,7 +7,6 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -249,42 +248,15 @@ const HeroHighlight = ({
           `,
         }}
       />
-
-      <div className={cn("relative z-20", className)}>{children}</div>
+      {children}
     </div>
-  );
-};
-
-interface FeatureComparisonProps {
-  title: string;
-  features: string[];
-  included: boolean[];
-}
-
-const FeatureComparison = ({ features, included, title }: FeatureComparisonProps) => {
-  return (
-    <Card className="p-6 h-full">
-      <h3 className="text-xl font-semibold mb-4">{title}</h3>
-      <ul className="space-y-3">
-        {features.map((feature, index) => (
-          <li key={index} className="flex items-center gap-2">
-            {included[index] ? (
-              <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
-            ) : (
-              <X className="h-5 w-5 text-red-500 flex-shrink-0" />
-            )}
-            <span className="text-sm">{feature}</span>
-          </li>
-        ))}
-      </ul>
-    </Card>
   );
 };
 
 const ResumeAnalysisDemo = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const steps = [
-    { name: "Upload", description: "Upload your resume document" },
+    { name: "Upload", description: "Upload your resume document and paste the job description" },
     { name: "Scan", description: "AI scans for keywords and structure" },
     { name: "Match", description: "Matching against job requirements" },
     { name: "Optimize", description: "Get optimization suggestions" },
@@ -309,16 +281,18 @@ const ResumeAnalysisDemo = () => {
   ];
 
   return (
-    <div className="w-full py-16 bg-background">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            How Our Resume Analysis Works
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Our AI-powered resume analysis helps you stand out from the competition with
-            intelligent optimization suggestions tailored to your target job.
-          </p>
+    <section className="w-full py-12 md:py-24 lg:py-32">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center justify-center space-y-4 text-center">
+          <div className="space-y-2">
+            <Badge className="mb-2">Process</Badge>
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
+              Intelligent Document Analysis
+            </h2>
+            <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
+              Our AI engine scans your resume, identifying key elements and comparing them against industry standards and specific job requirements.
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-20">
@@ -334,166 +308,193 @@ const ResumeAnalysisDemo = () => {
 
             <div className="flex flex-col space-y-4">
               {steps.map((step, index) => (
-                <motion.div
-                  key={index}
+                <Card
+                  key={step.name}
                   className={cn(
-                    "flex items-center p-4 rounded-lg border transition-colors",
+                    "p-4 transition-colors w-full",
                     currentStep === index
-                      ? "border-primary bg-primary/5"
-                      : "border-border"
+                      ? "bg-primary/5 border-primary"
+                      : "bg-card"
                   )}
-                  animate={{
-                    borderColor: currentStep === index ? "hsl(var(--primary))" : "hsl(var(--border))",
-                    backgroundColor: currentStep === index ? "hsl(var(--primary) / 0.05)" : "transparent",
-                  }}
                 >
-                  <div
-                    className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center mr-4",
-                      currentStep === index
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {index + 1}
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                        currentStep === index
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {index + 1}
+                    </div>
+                    <div>
+                      <div className="font-medium">{step.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {step.description}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-medium">{step.name}</h4>
-                    <p className="text-sm text-muted-foreground">{step.description}</p>
-                  </div>
-                </motion.div>
+                </Card>
               ))}
             </div>
-
-            <Button className="mt-4">
-              Try Resume Analysis <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
           </div>
 
-          <div className="relative h-[500px] rounded-xl overflow-hidden border bg-card">
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: currentStep === 0 ? 1 : 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="w-3/4 h-4/5 border-2 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center">
-                <div className="p-4 rounded-full bg-muted mb-4">
-                  <Search className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <p className="text-muted-foreground">Upload your resume</p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: currentStep === 1 ? 1 : 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="w-3/4 h-4/5 bg-card border rounded-lg p-6">
-                <div className="h-full flex flex-col">
-                  <div className="flex-1 space-y-2">
-                    {[...Array(8)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="h-4 bg-muted rounded"
-                        initial={{ width: "0%" }}
-                        animate={{ 
-                          width: currentStep === 1 ? `${Math.random() * 50 + 50}%` : "0%" 
-                        }}
-                        transition={{ duration: 0.5, delay: i * 0.1 }}
-                      />
-                    ))}
-                  </div>
+          <div className="relative aspect-square rounded-xl overflow-hidden">
+            <div className="absolute inset-0">
+              <AnimatePresence>
+                {currentStep === 0 && (
                   <motion.div
-                    className="h-2 bg-primary rounded-full mt-4"
-                    initial={{ width: "0%" }}
-                    animate={{ 
-                      width: currentStep === 1 ? "100%" : "0%" 
-                    }}
-                    transition={{ duration: 2 }}
-                  />
-                </div>
-              </div>
-            </motion.div>
+                    className="absolute inset-0 flex items-center justify-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <div className="w-3/4 h-4/5 bg-card border rounded-lg p-6 flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/80 to-primary mb-4 flex items-center justify-center">
+                        <ArrowRight className="w-8 h-8 text-primary-foreground" />
+                      </div>
+                      <div className="space-y-2 text-center">
+                        <p className="text-muted-foreground font-medium">
+                          Upload your resume document
+                        </p>
+                        <p className="text-sm text-muted-foreground/80">
+                          and paste the job description
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
 
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: currentStep === 2 ? 1 : 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="w-3/4 h-4/5 bg-card border rounded-lg p-6">
-                <div className="h-full flex flex-col">
-                  <div className="flex-1 space-y-4">
-                    {features.slice(0, 5).map((feature, i) => (
-                      <motion.div
-                        key={i}
-                        className="flex items-center"
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ 
-                          x: currentStep === 2 ? 0 : -20,
-                          opacity: currentStep === 2 ? 1 : 0
-                        }}
-                        transition={{ duration: 0.5, delay: i * 0.1 }}
-                      >
-                        <div className={cn(
-                          "w-2 h-2 rounded-full mr-2",
-                          i % 3 === 0 ? "bg-green-500" : i % 3 === 1 ? "bg-yellow-500" : "bg-red-500"
-                        )} />
-                        <span className="text-sm">{feature}</span>
-                        <div className="flex-1 mx-2 border-t border-dashed border-muted" />
-                        <Badge variant={i % 3 === 0 ? "default" : i % 3 === 1 ? "secondary" : "outline"}>
-                          {i % 3 === 0 ? "Match" : i % 3 === 1 ? "Partial" : "Missing"}
-                        </Badge>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: currentStep === 3 ? 1 : 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="w-3/4 h-4/5 bg-card border rounded-lg p-6">
-                <div className="h-full flex flex-col">
-                  <div className="flex-1 space-y-4">
-                    {[
-                      "Add quantifiable achievements",
-                      "Include relevant keywords: 'data analysis', 'project management'",
-                      "Remove outdated skills section",
-                      "Improve formatting consistency",
-                      "Add LinkedIn profile URL"
-                    ].map((suggestion, i) => (
-                      <motion.div
-                        key={i}
-                        className="flex items-start gap-2"
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ 
-                          y: currentStep === 3 ? 0 : 20,
-                          opacity: currentStep === 3 ? 1 : 0
-                        }}
-                        transition={{ duration: 0.5, delay: i * 0.1 }}
-                      >
-                        <div className="mt-0.5">
-                          <Check className="h-4 w-4 text-primary" />
+                {currentStep === 1 && (
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <div className="w-3/4 h-4/5 bg-card border rounded-lg p-6">
+                      <div className="h-full flex flex-col">
+                        <div className="flex-1 space-y-4">
+                          {Array.from({ length: 8 }).map((_, i) => (
+                            <motion.div
+                              key={i}
+                              className="h-4 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/60 rounded"
+                              initial={{ width: "0%" }}
+                              animate={{
+                                width: currentStep === 1 ? "100%" : "0%",
+                              }}
+                              transition={{
+                                duration: 0.5,
+                                delay: i * 0.1,
+                              }}
+                            />
+                          ))}
                         </div>
-                        <span className="text-sm">{suggestion}</span>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {currentStep === 2 && (
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <div className="w-3/4 h-4/5 bg-card border rounded-lg p-6">
+                      <div className="h-full flex flex-col space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div className="h-4 bg-gradient-to-r from-green-400 to-green-600 rounded w-1/3" />
+                          <div className="h-4 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded w-1/4" />
+                          <div className="h-4 bg-gradient-to-r from-red-400 to-red-600 rounded w-1/3" />
+                        </div>
+                        <div className="flex-1 space-y-4">
+                          {features.slice(0, 5).map((feature, i) => (
+                            <motion.div
+                              key={i}
+                              className="flex items-center justify-between"
+                              initial={{ x: -20, opacity: 0 }}
+                              animate={{ x: 0, opacity: 1 }}
+                              transition={{
+                                duration: 0.3,
+                                delay: i * 0.1,
+                              }}
+                            >
+                              <div className="flex items-center space-x-2 flex-1">
+                                <div className={cn(
+                                  "h-3 w-3 rounded-full",
+                                  i % 3 === 0 ? "bg-gradient-to-br from-green-400 to-green-600" :
+                                  i % 3 === 1 ? "bg-gradient-to-br from-yellow-400 to-yellow-600" :
+                                  "bg-gradient-to-br from-red-400 to-red-600"
+                                )} />
+                                <span className="text-sm text-muted-foreground">{feature}</span>
+                              </div>
+                              <div className="flex-1 mx-4 border-t border-dashed border-muted-foreground/20" />
+                              <Badge variant={
+                                i % 3 === 0 ? "default" :
+                                i % 3 === 1 ? "secondary" :
+                                "outline"
+                              } className={cn(
+                                "ml-2",
+                                i % 3 === 0 ? "bg-gradient-to-r from-green-500/80 to-green-600" :
+                                i % 3 === 1 ? "bg-gradient-to-r from-yellow-500/80 to-yellow-600" :
+                                "border-red-500/50"
+                              )}>
+                                {i % 3 === 0 ? "Match" : i % 3 === 1 ? "Partial" : "Missing"}
+                              </Badge>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {currentStep === 3 && (
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <div className="w-3/4 h-4/5 bg-card border rounded-lg p-6">
+                      <div className="h-full flex flex-col space-y-6">
+                        <div className="space-y-4">
+                          {Array.from({ length: 3 }).map((_, i) => (
+                            <motion.div
+                              key={i}
+                              className="flex items-center space-x-4"
+                              initial={{ scale: 0.8, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{
+                                duration: 0.4,
+                                delay: i * 0.2,
+                              }}
+                            >
+                              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                                <Check className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="h-4 bg-gradient-to-r from-primary/40 to-primary rounded w-3/4" />
+                                <div className="h-3 bg-muted rounded w-1/2 mt-2" />
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
-
-        <Separator className="my-16" />
 
         <div className="mb-16">
           <h3 className="text-2xl font-semibold text-center mb-12">Before & After Comparison</h3>
@@ -510,99 +511,8 @@ const ResumeAnalysisDemo = () => {
             <Badge variant="default">After Optimization</Badge>
           </div>
         </div>
-
-        <div>
-          <h3 className="text-2xl font-semibold text-center mb-12">Feature Comparison</h3>
-          
-          <Tabs defaultValue="basic" className="w-full max-w-4xl mx-auto">
-            <TabsList className="grid w-full grid-cols-3 mb-8">
-              <TabsTrigger value="basic">Basic</TabsTrigger>
-              <TabsTrigger value="premium">Premium</TabsTrigger>
-              <TabsTrigger value="enterprise">Enterprise</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="basic" className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FeatureComparison 
-                  title="Basic Analysis"
-                  features={features}
-                  included={[true, true, false, true, false, false, false, false]}
-                />
-                <FeatureComparison 
-                  title="Premium Analysis"
-                  features={features}
-                  included={[true, true, true, true, true, true, false, false]}
-                />
-                <FeatureComparison 
-                  title="Enterprise Analysis"
-                  features={features}
-                  included={[true, true, true, true, true, true, true, true]}
-                />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="premium" className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FeatureComparison 
-                  title="Basic Analysis"
-                  features={features}
-                  included={[true, true, false, true, false, false, false, false]}
-                />
-                <FeatureComparison 
-                  title="Premium Analysis"
-                  features={features}
-                  included={[true, true, true, true, true, true, false, false]}
-                />
-                <FeatureComparison 
-                  title="Enterprise Analysis"
-                  features={features}
-                  included={[true, true, true, true, true, true, true, true]}
-                />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="enterprise" className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FeatureComparison 
-                  title="Basic Analysis"
-                  features={features}
-                  included={[true, true, false, true, false, false, false, false]}
-                />
-                <FeatureComparison 
-                  title="Premium Analysis"
-                  features={features}
-                  included={[true, true, true, true, true, true, false, false]}
-                />
-                <FeatureComparison 
-                  title="Enterprise Analysis"
-                  features={features}
-                  included={[true, true, true, true, true, true, true, true]}
-                />
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        <HeroHighlight containerClassName="mt-20 h-auto py-20">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-center max-w-3xl mx-auto px-4"
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">
-              Ready to optimize your resume?
-            </h2>
-            <p className="text-lg text-muted-foreground mb-8">
-              Join thousands of job seekers who have improved their chances of landing interviews with our AI-powered resume analysis.
-            </p>
-            <Button size="lg">
-              Get Started Today <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </motion.div>
-        </HeroHighlight>
       </div>
-    </div>
+    </section>
   );
 };
 

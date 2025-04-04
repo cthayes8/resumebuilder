@@ -33,7 +33,7 @@ const faqs = [
   {
     question: "How often can I update my resume?",
     answer:
-      "This depends on your plan. Basic users can optimize 2 resumes per month, while Pro and Enterprise users have unlimited optimizations.",
+      "This depends on your plan. Basic users can optimize their resumes once, while Standard can optimize their resumes 3 times per monthand Premium users can optimize their resumes as many times as they want.",
   },
   {
     question: "Is my data secure?",
@@ -45,7 +45,7 @@ const faqs = [
 export function FAQ() {
   return (
     <section className="w-full py-12 md:py-24 lg:py-32 border-t">
-      <div className="container px-4 md:px-6">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <div className="space-y-2">
             <Badge className="mb-2">FAQ</Badge>

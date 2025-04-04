@@ -10,45 +10,45 @@ const tiers = [
   {
     name: "Basic",
     id: "tier-basic",
-    price: { monthly: "$9", yearly: "$90" },
-    description: "Essential resume optimization for job seekers",
+    price: { monthly: "$19.99", yearly: null },
+    description: "Perfect for a single resume optimization",
     features: [
-      "Basic ATS compatibility check",
+      "One-time resume optimization",
+      "ATS compatibility check",
       "Keyword analysis",
       "Format optimization",
-      "Up to 2 resumes per month",
-      "Email support",
+      "24/7 email support",
     ],
     featured: false,
   },
   {
-    name: "Pro",
-    id: "tier-pro",
-    price: { monthly: "$19", yearly: "$190" },
-    description: "Advanced features for serious job seekers",
+    name: "Standard",
+    id: "tier-standard",
+    price: { monthly: "$19.99", yearly: "$199" },
+    description: "Best value for active job seekers",
     features: [
+      "3 resume optimizations per month",
       "Everything in Basic",
       "Advanced ATS optimization",
       "Industry-specific suggestions",
-      "Unlimited resumes",
-      "Priority support",
+      "Priority email support",
       "Job match scoring",
     ],
     featured: true,
   },
   {
-    name: "Enterprise",
-    id: "tier-enterprise",
-    price: { monthly: "$49", yearly: "$490" },
-    description: "Custom solutions for teams and organizations",
+    name: "Premium",
+    id: "tier-premium",
+    price: { monthly: "$49.99", yearly: "$499" },
+    description: "Unlimited optimizations for professionals",
     features: [
-      "Everything in Pro",
+      "Unlimited resume optimizations",
+      "Everything in Standard",
       "Custom branding",
       "API access",
       "Team collaboration",
       "Dedicated account manager",
       "Custom integrations",
-      "Analytics dashboard",
     ],
     featured: false,
   },
@@ -57,7 +57,7 @@ const tiers = [
 export function Pricing() {
   return (
     <section className="w-full py-12 md:py-24 lg:py-32">
-      <div className="container px-4 md:px-6">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <div className="space-y-2">
             <Badge className="mb-2">Pricing</Badge>
@@ -99,7 +99,7 @@ export function Pricing() {
                 <div className="mt-4">
                   <div className="text-5xl font-bold">{tier.price.monthly}</div>
                   <div className="text-sm text-gray-500 dark:text-gray-400">
-                    per month
+                    {tier.name === "Basic" ? "one-time fee" : "per month"}
                   </div>
                 </div>
                 <ul className="my-6 space-y-2 text-sm">
@@ -122,7 +122,7 @@ export function Pricing() {
           ))}
         </div>
         <div className="mt-8 text-center text-sm text-gray-500">
-          All prices in USD. Billed monthly or yearly.
+          All prices in USD. Monthly plans can be cancelled anytime.
         </div>
       </div>
     </section>

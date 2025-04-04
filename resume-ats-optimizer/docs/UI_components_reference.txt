@@ -1,4 +1,4 @@
-# UI Components Reference (21st Dev MCP)
+# UI Components Reference (21st Dev MCP / MAGIC MCP Server )
 
 This document outlines the UI components for the Resume ATS Optimizer application, leveraging the 21st Dev MCP component library whenever possible. Use this as a reference when implementing the frontend.
 
@@ -6,13 +6,13 @@ This document outlines the UI components for the Resume ATS Optimizer applicatio
 
 ### Import Pattern
 ```jsx
-import { Button, Card, TextField, ProgressBar } from '@21stdev/mcp';
+import { Button, Card, TextField, ProgressBar } from '@21stdev/magic mcp server';
 ```
 
 ### Theme Configuration
 ```jsx
 // Configure MCP theme to match our application
-import { ThemeProvider } from '@21stdev/mcp';
+import { ThemeProvider } from '@21stdev/magic mcp server';
 
 // In _app.jsx or layout.jsx
 <ThemeProvider
@@ -46,7 +46,7 @@ import {
   Testimonials,
   FAQ,
   CTAButton 
-} from '@21stdev/mcp';
+} from '@21stdev/magic mcp server';
 
 const LandingPage = () => (
   <>

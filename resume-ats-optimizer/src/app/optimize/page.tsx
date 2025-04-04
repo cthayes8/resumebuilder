@@ -1,252 +1,175 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { AnalysisResult } from '@/services/analysis';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { DocumentService } from '@/services/document';
-
-interface OptimizationSelection {
-  experience: boolean[];
-  skills: boolean;
-  education: boolean | undefined;
-  formatting: boolean[];
-}
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { useSupabase } from "@/contexts/SupabaseContext";
+import { FileUpload } from "@/components/FileUpload";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Zap, Target, FileText, BarChart, ArrowRight, Upload, CheckCircle, Lock } from "lucide-react";
+import { Check, X } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
+import Link from "next/link";
 
 export default function OptimizePage() {
   const router = useRouter();
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [selections, setSelections] = useState<OptimizationSelection>({
-    experience: [],
-    skills: false,
-    education: false,
-    formatting: [],
-  });
+  const { user, isLoading } = useSupabase();
+  const [file, setFile] = React.useState<File | null>(null);
+  const [jobDescription, setJobDescription] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = React.useState(false);
 
-  useEffect(() => {
-    const storedResult = localStorage.getItem('analysisResult');
-    if (!storedResult) {
-      router.replace('/upload');
-      return;
+  React.useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/sign-up?redirect=/optimize');
     }
-
-    try {
-      const result = JSON.parse(storedResult);
-      setAnalysis(result);
-      // Initialize selections based on available suggestions
-      setSelections({
-        experience: new Array(result.optimization.experience.length).fill(false),
-        skills: false,
-        education: result.optimization.education.needsChanges ? false : undefined,
-        formatting: new Array(result.optimization.formattingImprovements.length).fill(false),
-      });
-    } catch (error) {
-      console.error('Failed to parse analysis result:', error);
-      router.replace('/upload');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [router]);
-
-  const handleExperienceToggle = (index: number) => {
-    setSelections(prev => ({
-      ...prev,
-      experience: prev.experience.map((value, i) => i === index ? !value : value),
-    }));
-  };
-
-  const handleFormattingToggle = (index: number) => {
-    setSelections(prev => ({
-      ...prev,
-      formatting: prev.formatting.map((value, i) => i === index ? !value : value),
-    }));
-  };
-
-  const handleSkillsToggle = () => {
-    setSelections(prev => ({
-      ...prev,
-      skills: !prev.skills,
-    }));
-  };
-
-  const handleEducationToggle = () => {
-    setSelections(prev => ({
-      ...prev,
-      education: !prev.education,
-    }));
-  };
-
-  const handleGenerateOptimizedResume = async () => {
-    if (!analysis) return;
-
-    try {
-      setIsGenerating(true);
-      // Here we would call the document service to generate the optimized resume
-      // For now, we'll just simulate the process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Navigate to the download page
-      router.push('/download');
-    } catch (error) {
-      console.error('Failed to generate optimized resume:', error);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  }, [user, isLoading, router]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner className="w-8 h-8 text-blue-600" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Loading...</h2>
+          <Progress value={100} className="w-24 h-2" />
+        </div>
       </div>
     );
   }
 
-  if (!analysis) {
-    return null;
+  if (!user) {
+    return null; // Will redirect in useEffect
   }
 
-  const { optimization } = analysis;
+  const handleFileUpload = (uploadedFile: File) => {
+    setFile(uploadedFile);
+    setError(null);
+  };
+
+  const handleOptimize = async () => {
+    if (!file) {
+      setError("Please upload your resume first");
+      return;
+    }
+
+    if (!jobDescription.trim()) {
+      setError("Please enter the job description");
+      return;
+    }
+
+    setError(null);
+    setIsProcessing(true);
+
+    try {
+      // Create FormData to send the file
+      const formData = new FormData();
+      formData.append('resume', file);
+      formData.append('jobDescription', jobDescription);
+
+      // Send the optimization request
+      const response = await fetch('/api/optimize', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to optimize resume');
+      }
+
+      const data = await response.json();
+      
+      // Redirect to results page
+      router.push(`/results/${data.sessionId}`);
+    } catch (err) {
+      console.error('Optimization error:', err);
+      setError("An error occurred while optimizing your resume. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
-    <main className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Optimize Your Resume</h1>
-        <p className="text-gray-600 mb-8">
-          Select the improvements you would like to apply to your resume. You can review each suggestion
-          and choose which ones to implement.
-        </p>
+    <div className="min-h-screen bg-background flex flex-col">
+      <main className="flex-1 flex flex-col items-center justify-start py-16 px-4">
+        <div className="w-full max-w-4xl mx-auto space-y-8">
+          <div className="space-y-2 text-center">
+            <h1 className="text-3xl font-bold">Optimize Your Resume</h1>
+            <p className="text-muted-foreground">
+              Upload your resume and paste the job description to get personalized optimization suggestions
+            </p>
+          </div>
 
-        {/* Experience Improvements */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Experience Improvements</h2>
-          <div className="space-y-4">
-            {optimization.experience.map((suggestion, index) => (
-              <div key={index} className="flex items-start gap-4">
-                <input
-                  type="checkbox"
-                  id={`experience-${index}`}
-                  checked={selections.experience[index]}
-                  onChange={() => handleExperienceToggle(index)}
-                  className="mt-1"
+          <div className="grid gap-8 w-full">
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload Resume</CardTitle>
+                <CardDescription>
+                  Upload your resume in PDF or DOCX format
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FileUpload
+                  id="resume-upload"
+                  name="resume"
+                  accept=".pdf,.doc,.docx"
+                  maxSize={5 * 1024 * 1024} // 5MB
+                  onUpload={handleFileUpload}
                 />
-                <label htmlFor={`experience-${index}`} className="text-gray-700">
-                  {suggestion}
-                </label>
-              </div>
-            ))}
-          </div>
-        </div>
+              </CardContent>
+            </Card>
 
-        {/* Skills Optimization */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Skills Optimization</h2>
-          <div className="space-y-4">
-            <div className="flex items-start gap-4">
-              <input
-                type="checkbox"
-                id="skills"
-                checked={selections.skills}
-                onChange={handleSkillsToggle}
-                className="mt-1"
-              />
-              <div>
-                <label htmlFor="skills" className="text-gray-700 font-medium block mb-2">
-                  Update skills section with optimized keywords
-                </label>
-                <p className="text-gray-600">{optimization.skills.explanation}</p>
-                <div className="mt-4 grid md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-medium text-gray-700 mb-2">Current Skills</h4>
-                    <ul className="list-disc list-inside space-y-1">
-                      {optimization.skills.original.map((skill, index) => (
-                        <li key={index} className="text-gray-600">{skill}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-700 mb-2">Optimized Skills</h4>
-                    <ul className="list-disc list-inside space-y-1">
-                      {optimization.skills.improved.map((skill, index) => (
-                        <li key={index} className="text-green-600">{skill}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Education Improvements */}
-        {optimization.education.needsChanges && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-4">Education Improvements</h2>
-            <div className="flex items-start gap-4">
-              <input
-                type="checkbox"
-                id="education"
-                checked={selections.education}
-                onChange={handleEducationToggle}
-                className="mt-1"
-              />
-              <div>
-                <label htmlFor="education" className="text-gray-700">
-                  Apply suggested education section improvements
-                </label>
-                <ul className="mt-2 list-disc list-inside space-y-1">
-                  {optimization.education.suggestions?.map((suggestion, index) => (
-                    <li key={index} className="text-gray-600">{suggestion}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Formatting Improvements */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Formatting Improvements</h2>
-          <div className="space-y-4">
-            {optimization.formattingImprovements.map((improvement, index) => (
-              <div key={index} className="flex items-start gap-4">
-                <input
-                  type="checkbox"
-                  id={`formatting-${index}`}
-                  checked={selections.formatting[index]}
-                  onChange={() => handleFormattingToggle(index)}
-                  className="mt-1"
+            <Card>
+              <CardHeader>
+                <CardTitle>Job Description</CardTitle>
+                <CardDescription>
+                  Paste the job description you want to optimize your resume for
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  placeholder="Paste the job description here..."
+                  className="min-h-[200px]"
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
                 />
-                <label htmlFor={`formatting-${index}`} className="text-gray-700">
-                  {improvement}
-                </label>
-              </div>
-            ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex justify-center">
+            <Button
+              size="lg"
+              onClick={handleOptimize}
+              disabled={isProcessing || !file || !jobDescription.trim()}
+            >
+              {isProcessing ? "Optimizing..." : "Optimize Resume"}
+            </Button>
           </div>
         </div>
+      </main>
+    </div>
+  );
+}
 
-        {/* Generate Button */}
-        <div className="flex justify-end">
-          <button
-            onClick={handleGenerateOptimizedResume}
-            disabled={isGenerating}
-            className={`flex items-center justify-center py-3 px-6 rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              isGenerating ? 'opacity-75 cursor-not-allowed' : ''
-            }`}
-          >
-            {isGenerating ? (
-              <>
-                <LoadingSpinner className="w-5 h-5 mr-2" />
-                Generating...
-              </>
-            ) : (
-              'Generate Optimized Resume'
-            )}
-          </button>
-        </div>
-      </div>
-    </main>
+function FeatureItem({ children, available }: { children: React.ReactNode; available?: boolean }) {
+  return (
+    <li className="flex items-center gap-2">
+      {available ? (
+        <Check className="w-5 h-5 text-green-500" />
+      ) : (
+        <X className="w-5 h-5 text-red-500" />
+      )}
+      <span className={available ? "text-foreground" : "text-muted-foreground"}>
+        {children}
+      </span>
+    </li>
   );
 } 

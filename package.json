@@ -1,0 +1,15 @@
+{
+  "name": "resumebuilder-workspace",
+  "private": true,
+  "workspaces": [
+    "resume-ats-optimizer"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=resume-ats-optimizer",
+    "build": "npm run build --workspace=resume-ats-optimizer",
+    "start": "npm run start --workspace=resume-ats-optimizer"
+  },
+  "devDependencies": {
+    "@types/webpack": "^5.28.5"
+  }
+}
